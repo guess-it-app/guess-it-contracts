@@ -54,6 +54,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, Ownable, Ree
     uint public transferPercentage = 980; //initial burn percentage of the transfer, in per mille
     uint public rewardsPercentage = 500; //initial rewards percentage, in per mille
 
+    mapping (address => bool) private _isExcludedFromFee;
     uint private _perMille = 1000; // 100%
     uint private _snapShotId;
     Game private _game;
@@ -65,13 +66,28 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, Ownable, Ree
     constructor(address _pancakeRouter, address _dev) ERC20Capped(1e11 ether) ERC20("GuessIt Token", "GSSIT") {
         pancakeRouter = IPancakeRouter02(_pancakeRouter);
         rewards = new GuessItRewards(_dev);
+
+        _isExcludedFromFee[owner()] = true;
+        _isExcludedFromFee[address(this)] = true;
     }
     
     function addLiquidity() external payable onlyOwner() inGameState(GameState.Created) {
         require(msg.value == 20 ether, "GuessItToken: not enough liquidity provided");
-        ERC20._mint(address(this), 1e7 ether); // preminted 0.01% of tokens to create liquidity pairs
-        _approve(address(this), address(pancakeRouter), 1e7 ether); // approve the router to spend tokens to create liquidity pairs        
+        mint(address(this), 1e7 ether); // preminted 0.01% of tokens to create liquidity pairs
+        approve(address(pancakeRouter), 1e7 ether); // approve the router to spend tokens to create liquidity pairs        
         pancakeRouter.addLiquidityETH{value:msg.value}(address(this), 1e7 ether, 1e7 ether, msg.value, getDev(), block.timestamp + 1 minutes);
+    }
+
+    function excludeFromFee(address account) public onlyOwner {
+        _isExcludedFromFee[account] = true;
+    }
+    
+    function includeInFee(address account) public onlyOwner {
+        _isExcludedFromFee[account] = false;
+    }
+
+    function isExcludedFromFee(address account) public view returns(bool) {
+        return _isExcludedFromFee[account];
     }
 
     function newGame(Game calldata game) external onlyOwner() inGameState(GameState.LiquidityAdded) {
@@ -101,7 +117,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, Ownable, Ree
         uint amountForRewards = _amount * rewardsPercentage / _perMille;
         uint amountToBurn = _amount - amountForRewards;        
         _burn(msg.sender, amountToBurn);
-        _swapTokensForBnb(msg.sender, address(rewards), amountForRewards);
+        _swapTokensForBnb(address(rewards), amountForRewards);
 
         uint solutions = _game.solutions.length;
         bytes32 hashedSolution = sha256(abi.encodePacked(_toLower(solution)));
@@ -187,12 +203,21 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, Ownable, Ree
     }
 
     function _transfer(address _sender, address _recipient, uint _amount) internal override {
+        if(_isExcludedFromFee[_sender] || _isExcludedFromFee[_recipient]) {
+            super._transfer(_sender, _recipient, _amount);
+            return;
+        }
+
         uint amountToTransfer = _amount * transferPercentage / _perMille;
         uint amountLeft = _amount - amountToTransfer;
-        uint amountForRewards = amountLeft * rewardsPercentage / _perMille;
+        uint amountForRewards = amountLeft * rewardsPercentage / _perMille;        
         uint amountToBurn = amountForRewards - amountForRewards;
-        _burn(_sender, amountToBurn);
-        _swapTokensForBnb(_sender, address(rewards), amountForRewards);
+        if(amountToBurn > 0) {
+            _burn(_sender, amountToBurn);
+        }
+        if(amountForRewards > 0) {
+            _swapTokensForBnb(address(rewards), amountForRewards);
+        }
         super._transfer(_sender, _recipient, amountToTransfer);
     }
 
@@ -204,13 +229,14 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, Ownable, Ree
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
-    function _swapTokensForBnb(address _from, address _to, uint _amount) private {
+    function _swapTokensForBnb(address _to, uint _amount) private {
         // generate the pancake pair path of token -> wbnb
         address[] memory path = new address[](2);
-        path[0] = _from;
+        path[0] = address(this);
         path[1] = pancakeRouter.WETH();
 
         // make the swap
+        approve(address(pancakeRouter), _amount);
         pancakeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(_amount, 0, path, _to, block.timestamp);
     }
 

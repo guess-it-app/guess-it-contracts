@@ -235,6 +235,7 @@ contract GuessItFarm is Ownable, ReentrancyGuard {
         path[1] = pancakeRouter.WETH();
 
         // make the swap
+        IERC(_token).approve(address(pancakeRouter), _amount);
         pancakeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(_amount, 0, path, _to, block.timestamp);
     }
 }
