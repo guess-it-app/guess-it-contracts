@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "name": "guessit.service",
+  "private": true,
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.0.0"
+  }
+}
