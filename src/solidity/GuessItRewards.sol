@@ -34,6 +34,10 @@ contract GuessItRewards is Ownable, AccessControl {
         emit BnbRewardsReceived(msg.value - devShare);
     }
 
+    function getTransferRole() public pure returns (bytes32) {
+        return TRANSFER_ROLE;
+    }
+
     function tokenReceive(address _token, bool _isPair, address _from, uint _amount) external {
         IERC20(_token).safeApprove(address(this), 0);
         IERC20(_token).safeIncreaseAllowance(address(this), _amount);
