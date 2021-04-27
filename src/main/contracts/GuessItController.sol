@@ -11,7 +11,7 @@ contract GuessItController is TimelockController {
     GuessItRewards immutable public rewards;
     GuessItFarm immutable public farm;
 
-    constructor(address _pancakeRouter, address _dev, address[] memory _multiSigs) TimelockController(1 days, _multiSigs, _multiSigs) {
+    constructor(address _pancakeRouter, address _dev, uint _minDelay, address[] memory _admins) TimelockController(_minDelay, _admins, _admins) {
         GuessItRewards rewardsContract = new GuessItRewards(_pancakeRouter, _dev);
         GuessItToken nativeContract = new GuessItToken(_pancakeRouter, payable(address(rewardsContract)));
         GuessItFarm farmContract = new GuessItFarm(address(nativeContract), payable(address(rewardsContract)), block.number);

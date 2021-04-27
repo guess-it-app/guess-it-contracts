@@ -75,7 +75,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         return MINTER_ROLE;
     }
     
-    function addLiquidity(address _addr) external payable onlyOwner inGameState(GameState.Created) {
+    function addLiquidity(address _addr) external payable nonReentrant inGameState(GameState.Created) {
         require(msg.value == 20 ether, "GuessItToken: not enough liquidity provided");
         mint(address(this), 1e7 ether); // preminted 0.01% of tokens to create liquidity pairs
         approve(address(pancakeRouter), 1e7 ether); // approve the router to spend tokens to create liquidity pairs        
