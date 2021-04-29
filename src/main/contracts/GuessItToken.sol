@@ -12,7 +12,8 @@ import "./IPancakeFactory.sol";
 import "./GuessItRewards.sol";
 
 contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessControl, Ownable, ReentrancyGuard {
-    
+    using SafeERC20 for IERC20;
+
     event GameStarted();
     event Guessed(address _from, string _solution, bool _guessed);
     event PriceUpdated(uint _guessPrice);
@@ -36,26 +37,32 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         _;
     }
 
+    modifier lockSwap {
+        _inSwap = true;
+        _;
+        _inSwap = false;
+    }
+
     struct Game {
         bytes32 puzzle; // the hashed puzzle (image)
         bytes32[] solutions; // the hashed solutions
-        bool started;
         bool finished;
     }
     
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     GuessItRewards public immutable rewards;
-    IPancakeRouter02 public immutable pancakeRouter;
-    uint public guessPrice;
+    IPancakeRouter02 public immutable pancakeRouter;    
     uint public guesserPercentage = 150; //initial rewards percentage for the guesser of the puzzle, in per mille
-    uint public transferPercentage = 980; //initial burn percentage of the transfer, in per mille
+    uint public transferPercentage = 980; //initial percentage of the amount that is allowed to be transfered, in per mille
     uint public rewardsPercentage = 500; //initial rewards percentage, in per mille
 
+    bool _inSwap;
     uint private _totalMinted;
     mapping (address => bool) private _isExcludedFromFee;
     uint private _perMille = 1000; // 100%
     uint private _snapShotId;
     Game private _game;
+    uint private _guessPrice;
     mapping (address => bool) private _guessers;
     GameState private _state;
     mapping (address => UserState) private _userStates;
@@ -64,9 +71,8 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         pancakeRouter = IPancakeRouter02(_pancakeRouter);
         rewards = GuessItRewards(_rewards);
 
-        excludeFromFee(owner());
         excludeFromFee(address(this));
-        excludeFromFee(_rewards);
+        excludeFromFee(_rewards);        
 
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
@@ -77,9 +83,15 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     
     function addLiquidity(address _addr) external payable nonReentrant inGameState(GameState.Created) {
         require(msg.value == 20 ether, "GuessItToken: not enough liquidity provided");
-        mint(address(this), 1e7 ether); // preminted 0.01% of tokens to create liquidity pairs
-        approve(address(pancakeRouter), 1e7 ether); // approve the router to spend tokens to create liquidity pairs        
-        pancakeRouter.addLiquidityETH{value:msg.value}(address(this), 1e7 ether, 1e7 ether, msg.value, _addr, block.timestamp + 1 minutes);
+        
+        _mint(address(this), 1e7 ether); // preminted 0.01% of tokens to create liquidity pairs
+        _approve(address(this), address(pancakeRouter), 1e7 ether);  
+        pancakeRouter.addLiquidityETH{value:msg.value}(address(this), 1e7 ether, 1e7 ether, msg.value, _addr, block.timestamp);
+        address pair = IPancakeFactory(pancakeRouter.factory()).getPair(address(this), pancakeRouter.WETH());
+        _isExcludedFromFee[pair] = true;
+        _approve(address(this), address(pancakeRouter), 0);
+
+        _state = GameState.LiquidityAdded;
     }
 
     function excludeFromFee(address account) public onlyOwner {
@@ -94,37 +106,47 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         return _isExcludedFromFee[account];
     }
 
-    function newGame(Game calldata game) external onlyOwner inGameState(GameState.LiquidityAdded) {
-        require(game.puzzle != "", "GuessItToken: puzzle should be provided");
-        require(game.solutions.length > 0, "GuessItToken: solutions should be provided");
+    function newGame(bytes32 puzzle_, bytes32[] calldata solutions_, uint guessPrice_) external inGameState(GameState.LiquidityAdded) {
+        require(puzzle_ != "", "GuessItToken: puzzle should be provided");
+        require(solutions_.length > 0, "GuessItToken: solutions should be provided");
 
-        _game.puzzle = game.puzzle;
-        _game.solutions = game.solutions;
-        _game.started = true;
-        _game.finished = false;
+        _game.puzzle = puzzle_;
+        _game.solutions = solutions_;        
 
         emit GameStarted();
         _state = GameState.Started;
+
+        _guessPrice = guessPrice_;
+        emit PriceUpdated(guessPrice_);
     }
 
     function getGame() external view notInGameState(GameState.Created) returns (Game memory) {
         return _game;
     }
 
-    function setPrices(uint _guessPrice) external onlyOwner inGameState(GameState.Started) {
-        guessPrice = _guessPrice;
-        emit PriceUpdated(_guessPrice);
+    function setPrice(uint guessPrice_) external onlyOwner inGameState(GameState.Started) {
+        _guessPrice = guessPrice_;
+        emit PriceUpdated(guessPrice_);
+    }
+
+    function getPrice() external view notInGameState(GameState.Created) returns (uint) {
+        return _guessPrice;
     }
 
     function guess(string calldata solution, uint _amount) external inGameState(GameState.Started) returns (bool) {
-        require(_amount == guessPrice, "GuessItToken: guessing price conditions not met");
+        require(_amount == _guessPrice, "GuessItToken: guessing price conditions not met");
+        
         uint amountForRewards = _amount * rewardsPercentage / _perMille;
         uint amountToBurn = _amount - amountForRewards;        
         if(amountToBurn > 0) {
-            _burn(_msgSender(), amountToBurn);
+           _burn(_msgSender(), amountToBurn);
         }
         if(amountForRewards > 0) {
-            rewards.tokenReceive(address(this), false, _msgSender(), amountForRewards);
+           //approve(address(this), 0);
+           //increaseAllowance(address(this), amountForRewards);
+           //transfer(address(rewards), amountForRewards);
+           //approve(address(this), 0);
+           //rewards.tokenReceived(address(this), false, amountForRewards);
         }
 
         uint solutions = _game.solutions.length;
@@ -145,7 +167,6 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     }
 
     function claimableRewards() public view inGameState(GameState.Finished)  returns (uint) {
-        require(_game.started, "GuessItToken: there is no active game");
         if(!_game.finished) {
             return 0;
         }
@@ -166,8 +187,8 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     function withdraw() external inGameState(GameState.Finished) notInUserState(UserState.Withdrawn) nonReentrant {
         uint amount = claimableRewards();
         require(amount > 0, "GuessItToken: there are no rewards to claim");
+        require(amount > 0, "GuessItToken: there is nothing to withdraw"); 
 
-        require(amount > 0, "GuessItToken: there is nothing to withdraw");        
         _userStates[_msgSender()] = UserState.Withdrawn;
         rewards.transferRewards(payable(_msgSender()), amount);        
         emit Withdrawn(_msgSender(), amount);        
@@ -212,7 +233,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     }
 
     function _transfer(address _sender, address _recipient, uint _amount) internal override {
-        if(isExcludedFromFee(_sender) || isExcludedFromFee(_recipient)) {
+        if(_inSwap || _game.finished || isExcludedFromFee(_sender) || isExcludedFromFee(_recipient)) {
             super._transfer(_sender, _recipient, _amount);
             return;
         }
@@ -225,9 +246,23 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
             _burn(_sender, amountToBurn);
         }
         if(amountForRewards > 0) {
-            rewards.tokenReceive(address(this), false, _msgSender(), amountForRewards);
+           super._transfer(_msgSender(), address(this), amountForRewards);
+           _swap(amountForRewards);
         }
         super._transfer(_sender, _recipient, amountToTransfer);
+    }
+
+    function _swap(uint _amount) private lockSwap {
+        // generate the pancake pair path of token -> wbnb
+        address[] memory path = new address[](2);
+        path[0] = address(this);
+        path[1] = pancakeRouter.WETH();
+
+        // make the swap
+        _approve(address(this), address(pancakeRouter), 0);
+        _approve(address(this), address(pancakeRouter), _amount);
+        pancakeRouter.swapExactTokensForETH(_amount, 1, path, address(rewards), block.timestamp);
+        _approve(address(this), address(pancakeRouter), 0);
     }
 
     function _mint(address account, uint amount) internal override(ERC20Capped, ERC20) {

@@ -5,7 +5,7 @@ const Farm = artifacts.require("GuessItFarm");
 
 contract("GuessItController", async () => {
 
-  it("should create and own contracts", async () => {
+  it("is correctly deployed correctly, and contracts are owned", async () => {
     const controller = await Controller.deployed();
     
     const native = await controller.native.call();    
@@ -27,7 +27,7 @@ contract("GuessItController", async () => {
     assert.equal(farmOwner, controller.address);
   });
 
-  it("should create and assign roles", async () => {
+  it("is correctly deployed correctly, and roles are assigned", async () => {
     const controller = await Controller.deployed();
     
     const farm = await controller.farm.call();

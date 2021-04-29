@@ -38,11 +38,7 @@ contract GuessItRewards is Ownable, AccessControl {
         return TRANSFER_ROLE;
     }
 
-    function tokenReceive(address _token, bool _isPair, address _from, uint _amount) external {
-        IERC20(_token).safeApprove(address(this), 0);
-        IERC20(_token).safeIncreaseAllowance(address(this), _amount);
-        IERC20(_token).safeTransferFrom(_from, address(this), _amount);
-        IERC20(_token).safeApprove(address(this), 0);
+    function tokenReceived(address _token, bool _isPair, uint _amount) external {
         emit TokenRewardsReceived(_token, _amount);
 
         if(_isPair) {
@@ -65,8 +61,10 @@ contract GuessItRewards is Ownable, AccessControl {
         IPancakePair pair = IPancakePair(_token);
         address token0 = pair.token0();
         address token1 = pair.token1();
+        pair.approve(address(pancakeRouter), 0);
         pair.approve(address(pancakeRouter), _amount);
         (uint amountA, uint amountB) = pancakeRouter.removeLiquidity(token0, token1, _amount, 0, 0, address(this), block.timestamp);
+        pair.approve(address(pancakeRouter), 0);
         _swap(token0, address(this), amountA);
         _swap(token1, address(this), amountB);
     }
@@ -80,7 +78,10 @@ contract GuessItRewards is Ownable, AccessControl {
         // make the swap
         IERC20(_token).safeApprove(address(pancakeRouter), 0);
         IERC20(_token).safeIncreaseAllowance(address(pancakeRouter), _amount);
-        pancakeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(_amount, 0, path, _to, block.timestamp);
+        uint[] memory amounts = pancakeRouter.swapExactTokensForETH(_amount, 0, path, _to, block.timestamp);
+        emit SwappedAmounts(amounts);
         IERC20(_token).safeApprove(address(pancakeRouter), 0);
     }
+
+    event SwappedAmounts(uint[] amounts);
 }

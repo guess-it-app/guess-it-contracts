@@ -240,6 +240,11 @@ contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
     }
 
     function _distributeDepositFee(PoolInfo storage pool, uint depositFee) private {
-        rewards.tokenReceive(pool.token, pool.isPair, _msgSender(), depositFee);
+        IERC20(pool.token).safeApprove(address(this), 0);
+        IERC20(pool.token).safeIncreaseAllowance(address(this), depositFee);
+        IERC20(pool.token).safeTransfer(address(rewards), depositFee);
+        IERC20(pool.token).safeApprove(address(this), 0);
+
+        rewards.tokenReceived(pool.token, pool.isPair, depositFee);
     }
 }
