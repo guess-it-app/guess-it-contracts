@@ -12,15 +12,15 @@ import "./IPancakeFactory.sol";
 import "./GuessItRewards.sol";
 
 contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessControl, Ownable, ReentrancyGuard {
-    using SafeERC20 for IERC20;
 
     event GameStarted();
     event Guessed(address _from, string _solution, bool _guessed);
     event PriceUpdated(uint _guessPrice);
-    event Withdrawn(address _to, uint amount);
+    event Withdrawn(address _to, uint _amount);
+    event SwappedForRewards(uint _amount);
 
     enum GameState { Created, LiquidityAdded, Started, Finished }
-    enum UserState { Withdrawn }
+    enum UserState { None, Withdrawn }
 
     modifier inGameState(GameState state) {
         require(_state == state, "GuessItToken: invalid game state");
@@ -53,7 +53,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     GuessItRewards public immutable rewards;
     IPancakeRouter02 public immutable pancakeRouter;    
     uint public guesserPercentage = 150; //initial rewards percentage for the guesser of the puzzle, in per mille
-    uint public transferPercentage = 980; //initial percentage of the amount that is allowed to be transfered, in per mille
+    uint public transferPercentage = 970; //initial percentage of the amount that is allowed to be transfered, in per mille
     uint public rewardsPercentage = 500; //initial rewards percentage, in per mille
 
     bool _inSwap;
@@ -85,6 +85,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         require(msg.value == 20 ether, "GuessItToken: not enough liquidity provided");
         
         _mint(address(this), 1e7 ether); // preminted 0.01% of tokens to create liquidity pairs
+        _approve(address(this), address(pancakeRouter), 0);
         _approve(address(this), address(pancakeRouter), 1e7 ether);  
         pancakeRouter.addLiquidityETH{value:msg.value}(address(this), 1e7 ether, 1e7 ether, msg.value, _addr, block.timestamp);
         address pair = IPancakeFactory(pancakeRouter.factory()).getPair(address(this), pancakeRouter.WETH());
@@ -142,15 +143,12 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
            _burn(_msgSender(), amountToBurn);
         }
         if(amountForRewards > 0) {
-           //approve(address(this), 0);
-           //increaseAllowance(address(this), amountForRewards);
-           //transfer(address(rewards), amountForRewards);
-           //approve(address(this), 0);
-           //rewards.tokenReceived(address(this), false, amountForRewards);
+           super._transfer(_msgSender(), address(this), amountForRewards);
+           _swap(amountForRewards);
         }
 
         uint solutions = _game.solutions.length;
-        bytes32 hashedSolution = sha256(abi.encodePacked(_toLower(solution)));
+        bytes32 hashedSolution = keccak256(abi.encodePacked(_toLower(solution)));
         for(uint i = 0; i < solutions; i++) {
             if(_game.solutions[i] == hashedSolution) {                
                 _game.finished = _guessers[_msgSender()] = true;
@@ -167,10 +165,6 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     }
 
     function claimableRewards() public view inGameState(GameState.Finished)  returns (uint) {
-        if(!_game.finished) {
-            return 0;
-        }
-
         bool isGuesser = _guessers[_msgSender()];
         uint totalSupply = totalSupplyAt(_snapShotId);
         uint userSupply = balanceOfAt(_msgSender(), _snapShotId);
@@ -186,7 +180,6 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
 
     function withdraw() external inGameState(GameState.Finished) notInUserState(UserState.Withdrawn) nonReentrant {
         uint amount = claimableRewards();
-        require(amount > 0, "GuessItToken: there are no rewards to claim");
         require(amount > 0, "GuessItToken: there is nothing to withdraw"); 
 
         _userStates[_msgSender()] = UserState.Withdrawn;
@@ -241,7 +234,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         uint amountToTransfer = _amount * transferPercentage / _perMille;
         uint amountLeft = _amount - amountToTransfer;
         uint amountForRewards = amountLeft * rewardsPercentage / _perMille;        
-        uint amountToBurn = amountForRewards - amountForRewards;
+        uint amountToBurn = amountLeft - amountForRewards;
         if(amountToBurn > 0) {
             _burn(_sender, amountToBurn);
         }
@@ -261,7 +254,12 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         // make the swap
         _approve(address(this), address(pancakeRouter), 0);
         _approve(address(this), address(pancakeRouter), _amount);
-        pancakeRouter.swapExactTokensForETH(_amount, 1, path, address(rewards), block.timestamp);
+        try pancakeRouter.swapExactTokensForETH(_amount, 1, path, address(rewards), block.timestamp) {
+            emit SwappedForRewards(_amount);
+        } catch { // catch should only happen when there is not enough liquidity, then we burn the tokens
+            _burn(address(this), _amount); 
+        }
+
         _approve(address(this), address(pancakeRouter), 0);
     }
 

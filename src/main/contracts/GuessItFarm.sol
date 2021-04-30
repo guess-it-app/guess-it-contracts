@@ -245,6 +245,32 @@ contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
         IERC20(pool.token).safeTransfer(address(rewards), depositFee);
         IERC20(pool.token).safeApprove(address(this), 0);
 
-        rewards.tokenReceived(pool.token, pool.isPair, depositFee);
+        //rewards.tokenReceived(pool.token, pool.isPair, depositFee);
     }
+
+    // function _removeLiquidityAndSwap(address _token, uint _amount) private {
+    //     IPancakePair pair = IPancakePair(_token);
+    //     address token0 = pair.token0();
+    //     address token1 = pair.token1();
+    //     pair.approve(address(pancakeRouter), 0);
+    //     pair.approve(address(pancakeRouter), _amount);
+    //     (uint amountA, uint amountB) = pancakeRouter.removeLiquidity(token0, token1, _amount, 0, 0, address(this), block.timestamp);
+    //     pair.approve(address(pancakeRouter), 0);
+    //     _swap(token0, address(this), amountA);
+    //     _swap(token1, address(this), amountB);
+    // }
+
+    // function _swap(address _token, address _to, uint _amount) private {
+    //     // generate the pancake pair path of token -> wbnb
+    //     address[] memory path = new address[](2);
+    //     path[0] = _token;
+    //     path[1] = pancakeRouter.WETH();
+
+    //     // make the swap
+    //     IERC20(_token).safeApprove(address(pancakeRouter), 0);
+    //     IERC20(_token).safeIncreaseAllowance(address(pancakeRouter), _amount);
+    //     uint[] memory amounts = pancakeRouter.swapExactTokensForETH(_amount, 0, path, _to, block.timestamp);
+    //     emit SwappedAmounts(amounts);
+    //     IERC20(_token).safeApprove(address(pancakeRouter), 0);
+    // }
 }
