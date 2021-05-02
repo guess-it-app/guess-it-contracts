@@ -8,7 +8,6 @@ import "../node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Burn
 import "../node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
 import "../node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Snapshot.sol";
 import "./IPancakeRouter02.sol";
-import "./IPancakeFactory.sol";
 import "./GuessItRewards.sol";
 
 contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessControl, Ownable, ReentrancyGuard {
@@ -19,8 +18,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     event Withdrawn(address _to, uint _amount);
     event SwappedForRewards(uint _amount);
 
-    enum GameState { Created, LiquidityAdded, Started, Finished }
-    enum UserState { None, Withdrawn }
+    enum GameState { Created, Started, Finished }
 
     modifier inGameState(GameState state) {
         require(_state == state, "GuessItToken: invalid game state");
@@ -29,11 +27,6 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     
     modifier notInGameState(GameState state) {
         require(_state != state, "GuessItToken: invalid game state");
-        _;
-    }
-
-    modifier notInUserState(UserState state) {
-        require(_userStates[_msgSender()] != state, "GuessItToken: invalid user state");
         _;
     }
 
@@ -64,13 +57,14 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     Game private _game;
     uint private _guessPrice;
     mapping (address => bool) private _guessers;
+    bool private _guesserClaimed;
     GameState private _state;
-    mapping (address => UserState) private _userStates;
 
-    constructor(address _pancakeRouter, address payable _rewards) ERC20Capped(1e11 ether) ERC20("GuessIt Token", "GSSIT") {
+    constructor(address _pancakeRouter, address _dev, address payable _rewards) ERC20Capped(1e11 ether) ERC20("GuessIt Token", "GSSIT") {
         pancakeRouter = IPancakeRouter02(_pancakeRouter);
         rewards = GuessItRewards(_rewards);
 
+        ERC20._mint(_dev, 1e8 ether); 
         excludeFromFee(address(this));
         excludeFromFee(_rewards);        
 
@@ -79,20 +73,6 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     
     function getMinterRole() public pure returns (bytes32) {
         return MINTER_ROLE;
-    }
-    
-    function addLiquidity(address _addr) external payable nonReentrant inGameState(GameState.Created) {
-        require(msg.value == 20 ether, "GuessItToken: not enough liquidity provided");
-        
-        _mint(address(this), 1e7 ether); // preminted 0.01% of tokens to create liquidity pairs
-        _approve(address(this), address(pancakeRouter), 0);
-        _approve(address(this), address(pancakeRouter), 1e7 ether);  
-        pancakeRouter.addLiquidityETH{value:msg.value}(address(this), 1e7 ether, 1e7 ether, msg.value, _addr, block.timestamp);
-        address pair = IPancakeFactory(pancakeRouter.factory()).getPair(address(this), pancakeRouter.WETH());
-        _isExcludedFromFee[pair] = true;
-        _approve(address(this), address(pancakeRouter), 0);
-
-        _state = GameState.LiquidityAdded;
     }
 
     function excludeFromFee(address account) public onlyOwner {
@@ -107,7 +87,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         return _isExcludedFromFee[account];
     }
 
-    function newGame(bytes32 puzzle_, bytes32[] calldata solutions_, uint guessPrice_) external inGameState(GameState.LiquidityAdded) {
+    function newGame(bytes32 puzzle_, bytes32[] calldata solutions_, uint guessPrice_) external inGameState(GameState.Created) {
         require(puzzle_ != "", "GuessItToken: puzzle should be provided");
         require(solutions_.length > 0, "GuessItToken: solutions should be provided");
 
@@ -164,27 +144,27 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         return false;
     }
 
-    function claimableRewards() public view inGameState(GameState.Finished)  returns (uint) {
-        bool isGuesser = _guessers[_msgSender()];
-        uint totalSupply = totalSupplyAt(_snapShotId);
-        uint userSupply = balanceOfAt(_msgSender(), _snapShotId);
+    function claimableRewards(uint _amount) public view inGameState(GameState.Finished) returns (uint) {
+        require(_amount > 0, "GuessItToken: not a valid amount"); 
+        uint totalSupply = totalSupplyAt(_snapShotId); // fixate the rewards per amount, and the rewards for the guesser
+        
+        uint guesserRewards = !_guesserClaimed && _guessers[_msgSender()] ? address(rewards).balance * guesserPercentage / _perMille : 0;
+        uint participationRewards = (address(rewards).balance - guesserRewards) * _amount / totalSupply;
 
-        uint guesserRewards = address(rewards).balance * guesserPercentage / _perMille;
-        uint participationRewards = 0;
-        if(totalSupply > 0) {
-            participationRewards = (address(rewards).balance - guesserRewards) * userSupply / totalSupply;
-        }
-
-        return isGuesser ? guesserRewards + participationRewards : participationRewards;
+        return guesserRewards + participationRewards;
     }
 
-    function withdraw() external inGameState(GameState.Finished) notInUserState(UserState.Withdrawn) nonReentrant {
-        uint amount = claimableRewards();
-        require(amount > 0, "GuessItToken: there is nothing to withdraw"); 
+    function withdraw(uint _amount) external inGameState(GameState.Finished) nonReentrant {
+        uint totalRewards = claimableRewards(_amount);
+        
+        rewards.transferRewards(payable(_msgSender()), totalRewards);              
+        emit Withdrawn(_msgSender(), totalRewards);        
+        _burn(_msgSender(), _amount);
 
-        _userStates[_msgSender()] = UserState.Withdrawn;
-        rewards.transferRewards(payable(_msgSender()), amount);        
-        emit Withdrawn(_msgSender(), amount);        
+        // guesser is only able to claim once
+        if(!_guesserClaimed && _guessers[_msgSender()]) {
+            _guesserClaimed = true;
+        }
     }
 
     function setTransferPercentage(uint _transferPercentage) external onlyOwner {
@@ -205,7 +185,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         guesserPercentage = _guesserPercentage;
     }
 
-    function mint(address _to, uint _amount) public {
+    function mint(address _to, uint _amount) public notInGameState(GameState.Finished) {
         require(hasRole(MINTER_ROLE, _msgSender()), "GuessItToken: caller is not a minter");
         _mint(_to, _amount);
     }

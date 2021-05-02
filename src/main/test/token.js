@@ -10,7 +10,7 @@ contract("GuessItController", async accounts => {
     const BN = web3.utils.BN;
 
     async function getController() {
-        return await Controller.deployed();
+        return await Controller.new("0xC930dA3fB1205E72AF54b7305E1fD030C5118c89", '0x82EC43c1b93E3aDeE158D81e9C1eABA89598Edc0', 0, ['0x82EC43c1b93E3aDeE158D81e9C1eABA89598Edc0']);
     }
 
     async function getNativeContract() {
@@ -21,14 +21,11 @@ contract("GuessItController", async accounts => {
         return await Token.at(native);
     }
 
-    async function startNewGame(nativeContract, addLiquidity = true, puzzle = "puzzle", solutions = ["solution 1", "solution 2"], guessPrice = "10") {
-        if (addLiquidity) {
-            await nativeContract.addLiquidity(accounts[0], { value: web3.utils.toWei("20") });
-        }
+    async function startNewGame(nativeContract, puzzle = "puzzle", solutions = ["solution 1", "solution 2"], guessPrice = "10") {
         await nativeContract.newGame(web3.utils.keccak256(puzzle), solutions.map(web3.utils.keccak256), web3.utils.toWei(guessPrice));
     }
 
-    async function getSomeTokens(nativeContract) {
+    async function addLiquidity(controller, nativeContract) {
         const router = await nativeContract.pancakeRouter.call();
         assert.notEqual(router, null);
         const routerContract = await Router.at(router);
@@ -38,13 +35,15 @@ contract("GuessItController", async accounts => {
         const factoryContract = await Factory.at(factory);
 
         const wbnb = await routerContract.WETH.call();
+        await factoryContract.createPair(nativeContract.address, wbnb);
         const pair = await factoryContract.getPair.call(nativeContract.address, wbnb);
-        const pairContract = await Pair.at(pair);
-        const balance = await pairContract.balanceOf(accounts[0]);
-        const balanceToRemove = balance.div(new BN("10"));
 
-        await pairContract.approve(router, balanceToRemove);
-        await routerContract.removeLiquidityETH(nativeContract.address, balanceToRemove, 0, 0, accounts[0], Date.now());
+        let excluded = nativeContract.contract.methods.excludeFromFee(pair).encodeABI();
+        await controller.schedule(nativeContract.address, 0, excluded, web3.utils.fromAscii(""), web3.utils.fromAscii(""), 0);
+        await controller.execute(nativeContract.address, 0, excluded, web3.utils.fromAscii(""), web3.utils.fromAscii(""));
+
+        await nativeContract.approve(router, web3.utils.toWei("10000"));
+        await routerContract.addLiquidityETH(nativeContract.address, web3.utils.toWei("10000"), web3.utils.toWei("10000"), web3.utils.toWei("1"), accounts[0], Date.now(), { value: web3.utils.toWei("1") });
     }
 
     it("is correctly deployed", async () => {
@@ -65,26 +64,6 @@ contract("GuessItController", async accounts => {
 
         const rewardsExcludedFromFee = await nativeContract.isExcludedFromFee.call(rewards);
         assert.ok(rewardsExcludedFromFee);
-    });
-
-    it("is deployed and not enough liquidity is provided", async () => {
-        const nativeContract = await getNativeContract();
-
-        await truffleAssert.reverts(nativeContract.addLiquidity(accounts[0], { value: web3.utils.toWei("10") }));
-    });
-
-    it("is not allowed to start new game without adding liquidity", async () => {
-        const nativeContract = await getNativeContract();
-        await truffleAssert.reverts(startNewGame(nativeContract, false));
-    });
-
-    it("is deployed and liquidity is added", async () => {
-        const nativeContract = await getNativeContract();
-
-        await nativeContract.addLiquidity(accounts[0], { value: web3.utils.toWei("20") });
-
-        const totalSupply = await nativeContract.totalSupply.call();
-        assert.equal(totalSupply, web3.utils.toWei("10000000"));
     });
 
     it("is account excluded/included from fee", async () => {
@@ -126,7 +105,7 @@ contract("GuessItController", async accounts => {
         const nativeContract = await getNativeContract();
 
         await startNewGame(nativeContract,);
-        await truffleAssert.reverts(startNewGame(nativeContract, false));
+        await truffleAssert.reverts(startNewGame(nativeContract));
     });
 
     it("is allowed to set the price after the game is started", async () => {
@@ -155,10 +134,14 @@ contract("GuessItController", async accounts => {
     });
 
     it("is deployed, a new game is started and someone tried to guess unsuccessfully", async () => {
-        const nativeContract = await getNativeContract();
+        const controller = await getController();
+
+        const native = await controller.native.call();
+        assert.notEqual(native, null);
+        const nativeContract = await Token.at(native);
 
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
+        await addLiquidity(controller, nativeContract);
 
         const totalSupply = await nativeContract.totalSupply.call();
 
@@ -173,7 +156,7 @@ contract("GuessItController", async accounts => {
         });
 
         const newTotalSupply = await nativeContract.totalSupply.call();
-        assert.ok(newTotalSupply < totalSupply);
+        assert.notEqual(newTotalSupply, totalSupply);
 
         const game = await nativeContract.getGame.call();
         assert.equal(game.finished, false);
@@ -191,7 +174,6 @@ contract("GuessItController", async accounts => {
         const nativeContract = await getNativeContract();
 
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
 
         var price = web3.utils.toWei("10");
         var tx = await nativeContract.guess("Solution 2", price);
@@ -204,10 +186,14 @@ contract("GuessItController", async accounts => {
     });
 
     it("is deployed, a new game is started and tokens are send", async () => {
-        const nativeContract = await getNativeContract();
+        const controller = await getController();
+
+        const native = await controller.native.call();
+        assert.notEqual(native, null);
+        const nativeContract = await Token.at(native);
 
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
+        await addLiquidity(controller, nativeContract);
 
         const balanceOfFirstAccount = await nativeContract.balanceOf(accounts[0]);
 
@@ -228,14 +214,13 @@ contract("GuessItController", async accounts => {
 
         const rewards = await nativeContract.rewards.call();
         const balance = await web3.eth.getBalance(rewards);
-        assert.notEqual(balance, 0);        
+        assert.notEqual(balance, 0);
     });
 
     it("is deployed, a new game is started and withdraw is called before puzzle is guessed", async () => {
         const nativeContract = await getNativeContract();
 
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
 
         var price = web3.utils.toWei("10");
         var tx = await nativeContract.guess("Solution 3", price);
@@ -243,14 +228,18 @@ contract("GuessItController", async accounts => {
             return ev._guessed === false;
         });
 
-        await truffleAssert.reverts(nativeContract.withdraw());
+        await truffleAssert.reverts(nativeContract.withdraw(web3.utils.toWei("1000")));
     });
 
     it("is deployed, a new game is started, someone guessed the puzzle and rewards are claimed", async () => {
-        const nativeContract = await getNativeContract();
+        const controller = await getController();
 
+        const native = await controller.native.call();
+        assert.notEqual(native, null);
+        const nativeContract = await Token.at(native);
+        
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
+        await addLiquidity(controller, nativeContract);
 
         var price = web3.utils.toWei("10");
         var txGuess = await nativeContract.guess("Solution 2", price);
@@ -258,28 +247,29 @@ contract("GuessItController", async accounts => {
             return ev._guessed === true;
         });
 
-        var currentBalance = await web3.eth.getBalance(accounts[0]);
+        var currentBalance = await web3.eth.getBalance(accounts[0]);        
 
-        var rewards = await nativeContract.claimableRewards.call(); 
-        assert.notEqual(rewards, 0);
+        var rewards = await nativeContract.claimableRewards.call(web3.utils.toWei("1000"));
+        assert.notEqual(0, rewards);
 
-        const txWithdraw = await nativeContract.withdraw();
+        const txWithdraw = await nativeContract.withdraw(web3.utils.toWei("1000"));
         truffleAssert.eventEmitted(txWithdraw, 'Withdrawn', (ev) => {
             return ev._to === accounts[0] && ev._amount.toString() === rewards.toString();
         });
 
         var newBalance = await web3.eth.getBalance(accounts[0]);
-
-        assert.ok(newBalance > currentBalance);
-
-        await truffleAssert.reverts(nativeContract.withdraw()); // it should not be allowed to withdraw a second time
+        assert.notEqual(newBalance, currentBalance);
     });
 
-    it("is deployed, a new game is started, someone guessed the puzzle, transfer occurred to other account and rewards are claimed", async () => {
-        const nativeContract = await getNativeContract();
+    it("is deployed, a new game is started, someone guessed the puzzle, guesser is withdrawing twice", async () => {
+        const controller = await getController();
+
+        const native = await controller.native.call();
+        assert.notEqual(native, null);
+        const nativeContract = await Token.at(native);
 
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
+        await addLiquidity(controller, nativeContract);
 
         var price = web3.utils.toWei("10");
         var txGuess = await nativeContract.guess("Solution 2", price);
@@ -287,19 +277,51 @@ contract("GuessItController", async accounts => {
             return ev._guessed === true;
         });
 
-        var rewards = await nativeContract.claimableRewards.call(); 
-        assert.notEqual(rewards, 0);
+        var fistClaimableRewards = await nativeContract.claimableRewards.call(web3.utils.toWei("1000"));
+        const txWithdrawFirst = await nativeContract.withdraw(web3.utils.toWei("1000"));
+        truffleAssert.eventEmitted(txWithdrawFirst, 'Withdrawn', (ev) => {
+            return ev._to === accounts[0] && ev._amount.toString() === fistClaimableRewards.toString();
+        });
+
+        var secondClaimableRewards = await nativeContract.claimableRewards.call(web3.utils.toWei("1000"));
+
+        assert.ok(fistClaimableRewards > secondClaimableRewards);
+
+        const txWithdrawSecond = await nativeContract.withdraw(web3.utils.toWei("1000"));
+        truffleAssert.eventEmitted(txWithdrawSecond, 'Withdrawn', (ev) => {
+            return ev._to === accounts[0] && ev._amount.toString() === secondClaimableRewards.toString();
+        });
+    });
+
+    it("is deployed, a new game is started, someone guessed the puzzle, transfer occurred to other account and rewards are claimed", async () => {
+        const controller = await getController();
+
+        const native = await controller.native.call();
+        assert.notEqual(native, null);
+        const nativeContract = await Token.at(native);
+
+        await startNewGame(nativeContract);
+        await addLiquidity(controller, nativeContract);
+
+        var price = web3.utils.toWei("10");
+        var txGuess = await nativeContract.guess("Solution 2", price);
+        truffleAssert.eventEmitted(txGuess, 'Guessed', (ev) => {
+            return ev._guessed === true;
+        });
+
+        var rewards = await nativeContract.claimableRewards.call(web3.utils.toWei("1000"));
+        assert.notEqual(0, rewards);
 
         const amount = web3.utils.toWei("1000");
         await nativeContract.transfer(accounts[1], amount);
 
-        const txWithdraw = await nativeContract.withdraw();
+        const txWithdraw = await nativeContract.withdraw(web3.utils.toWei("1000"));
         truffleAssert.eventEmitted(txWithdraw, 'Withdrawn', (ev) => {
             return ev._to === accounts[0] && ev._amount.toString() === rewards.toString();
         });
 
-        var secondAccountRewards = await nativeContract.claimableRewards.call({from: accounts[1]});
-        assert.equal(secondAccountRewards, 0);
+        var secondAccountRewards = await nativeContract.claimableRewards.call(web3.utils.toWei("1000"), { from: accounts[1] });
+        assert.notEqual(0, secondAccountRewards);
     });
 
     it("is deployed and mint is not allowed", async () => {
@@ -312,13 +334,12 @@ contract("GuessItController", async accounts => {
         const nativeContract = await getNativeContract();
 
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
 
         var price = web3.utils.toWei("10");
         var txGuess = await nativeContract.guess("Solution 2", price);
         truffleAssert.eventEmitted(txGuess, 'Guessed', (ev) => {
             return ev._guessed === true;
-        });     
+        });
 
         const rewards = await nativeContract.rewards.call();
         assert.notEqual(rewards, null);
@@ -337,7 +358,6 @@ contract("GuessItController", async accounts => {
         const nativeContract = await getNativeContract();
 
         await startNewGame(nativeContract);
-        await getSomeTokens(nativeContract);
 
         var price = web3.utils.toWei("10");
         var txGuess = await nativeContract.guess("Solution 2", price);
