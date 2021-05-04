@@ -49,7 +49,7 @@ contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
 
     PoolInfo[] public poolInfo; // Info of each pool.
     mapping(uint => mapping(address => UserInfo)) public userInfo; // Info of each user that stakes LP tokens.
-    uint public immutable nativePerBlock = 2000 ether; // min native tokens minted per block => 3000
+    uint public immutable nativePerBlock = 3000 ether; // min native tokens minted per block => 3000
     uint public totalAllocationPoints = 0; // Total allocation points. Must be the sum of all allocation points in all pools.
     uint public immutable startBlock;
     GuessItToken public immutable native;
