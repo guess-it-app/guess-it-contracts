@@ -3,14 +3,13 @@ const Token = artifacts.require("GuessItToken");
 const Rewards = artifacts.require("GuessItRewards");
 const Router = artifacts.require("IPancakeRouter02");
 const Factory = artifacts.require("IPancakeFactory");
-const Pair = artifacts.require("IPancakePair");
 
 contract("GuessItController", async accounts => {
     const truffleAssert = require('truffle-assertions');
     const BN = web3.utils.BN;
 
     async function getController() {
-        return await Controller.new("0xC930dA3fB1205E72AF54b7305E1fD030C5118c89", '0x82EC43c1b93E3aDeE158D81e9C1eABA89598Edc0', 0, ['0x82EC43c1b93E3aDeE158D81e9C1eABA89598Edc0']);
+        return await Controller.new('0xC930dA3fB1205E72AF54b7305E1fD030C5118c89', '0x82EC43c1b93E3aDeE158D81e9C1eABA89598Edc0', 0, ['0x82EC43c1b93E3aDeE158D81e9C1eABA89598Edc0']);
     }
 
     async function getNativeContract() {

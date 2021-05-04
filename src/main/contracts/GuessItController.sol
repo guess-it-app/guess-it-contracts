@@ -14,12 +14,13 @@ contract GuessItController is TimelockController {
     constructor(address _pancakeRouter, address _dev, uint _minDelay, address[] memory _admins) TimelockController(_minDelay, _admins, _admins) {
         GuessItRewards rewardsContract = new GuessItRewards(_dev);
         GuessItToken nativeContract = new GuessItToken(_pancakeRouter, _dev, payable(address(rewardsContract)));
-        GuessItFarm farmContract = new GuessItFarm(address(nativeContract), payable(address(rewardsContract)), block.number);
+        GuessItFarm farmContract = new GuessItFarm(_pancakeRouter, address(nativeContract), payable(address(rewardsContract)), block.number);
 
         nativeContract.grantRole(nativeContract.getMinterRole(), address(farmContract));
+        nativeContract.excludeFromFee(address(farmContract));
         nativeContract.transferOwnership(address(this));
         rewardsContract.grantRole(rewardsContract.getTransferRole(), address(nativeContract));
-        rewardsContract.transferOwnership(address(this));        
+        rewardsContract.transferOwnership(address(this));       
         farmContract.transferOwnership(address(this));
         
         rewards = rewardsContract;

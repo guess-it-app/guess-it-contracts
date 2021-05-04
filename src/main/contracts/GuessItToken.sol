@@ -6,17 +6,16 @@ import "../node_modules/@openzeppelin/contracts/access/Ownable.sol";
 import "../node_modules/@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "../node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Capped.sol";
-import "../node_modules/@openzeppelin/contracts/token/ERC20/extensions/ERC20Snapshot.sol";
 import "./IPancakeRouter02.sol";
 import "./GuessItRewards.sol";
 
-contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessControl, Ownable, ReentrancyGuard {
+contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, ReentrancyGuard {
 
     event GameStarted();
     event Guessed(address _from, string _solution, bool _guessed);
     event PriceUpdated(uint _guessPrice);
     event Withdrawn(address _to, uint _amount);
-    event SwappedForRewards(uint _amount);
+    event SwappedForRewards(address _token, uint _amount);
 
     enum GameState { Created, Started, Finished }
 
@@ -40,6 +39,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         bytes32 puzzle; // the hashed puzzle (image)
         bytes32[] solutions; // the hashed solutions
         bool finished;
+        uint finishedBlock;
     }
     
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -53,7 +53,6 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
     uint private _totalMinted;
     mapping (address => bool) private _isExcludedFromFee;
     uint private _perMille = 1000; // 100%
-    uint private _snapShotId;
     Game private _game;
     uint private _guessPrice;
     mapping (address => bool) private _guessers;
@@ -132,7 +131,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         for(uint i = 0; i < solutions; i++) {
             if(_game.solutions[i] == hashedSolution) {                
                 _game.finished = _guessers[_msgSender()] = true;
-                _snapShotId = _snapshot();
+                _game.finishedBlock = block.number;
                 _state = GameState.Finished;
                 emit Guessed(_msgSender(), solution, true);                
                 return true;
@@ -146,7 +145,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
 
     function claimableRewards(uint _amount) public view inGameState(GameState.Finished) returns (uint) {
         require(_amount > 0, "GuessItToken: not a valid amount"); 
-        uint totalSupply = totalSupplyAt(_snapShotId); // fixate the rewards per amount, and the rewards for the guesser
+        uint totalSupply = totalSupply();
         
         uint guesserRewards = !_guesserClaimed && _guessers[_msgSender()] ? address(rewards).balance * guesserPercentage / _perMille : 0;
         uint participationRewards = (address(rewards).balance - guesserRewards) * _amount / totalSupply;
@@ -185,7 +184,7 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         guesserPercentage = _guesserPercentage;
     }
 
-    function mint(address _to, uint _amount) public notInGameState(GameState.Finished) {
+    function mint(address _to, uint _amount) public {
         require(hasRole(MINTER_ROLE, _msgSender()), "GuessItToken: caller is not a minter");
         _mint(_to, _amount);
     }
@@ -232,24 +231,17 @@ contract GuessItToken is ERC20Snapshot, ERC20Burnable, ERC20Capped, AccessContro
         path[1] = pancakeRouter.WETH();
 
         // make the swap
-        _approve(address(this), address(pancakeRouter), 0);
         _approve(address(this), address(pancakeRouter), _amount);
-        try pancakeRouter.swapExactTokensForETH(_amount, 1, path, address(rewards), block.timestamp) {
-            emit SwappedForRewards(_amount);
+        try pancakeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(_amount, 1, path, address(rewards), block.timestamp) {
+            emit SwappedForRewards(address(this), _amount);
         } catch { // catch should only happen when there is not enough liquidity, then we burn the tokens
             _burn(address(this), _amount); 
         }
-
-        _approve(address(this), address(pancakeRouter), 0);
     }
 
     function _mint(address account, uint amount) internal override(ERC20Capped, ERC20) {
         ERC20Capped._mint(account, amount);
         _totalMinted += amount;
-    }
-
-    function _beforeTokenTransfer(address from, address to, uint tokenId) internal override(ERC20Snapshot, ERC20) {
-        super._beforeTokenTransfer(from, to, tokenId);
     }
 
     function _toLower(string calldata str) private pure returns (string memory) {
