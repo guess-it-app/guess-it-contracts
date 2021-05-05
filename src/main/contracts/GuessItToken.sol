@@ -145,13 +145,12 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
 
     function claimableRewards(uint _amount) public view inGameState(GameState.Finished) returns (uint) {
         require(_amount > 0, "GuessItToken: not a valid amount"); 
-        uint totalSupply = totalSupply();
-        
-        bool isGuesser = _guessers[_msgSender()];
-        uint guesserRewards = !_guesserClaimed ? address(rewards).balance * guesserPercentage / _perMille : 0;
+
+        uint totalSupply = totalSupply();     
+        uint guesserRewards = !_guesserClaimed && _guessers[_msgSender()] ? address(rewards).balance * guesserPercentage / _perMille : 0;
         uint participationRewards = (address(rewards).balance - guesserRewards) * _amount / totalSupply;
 
-        return isGuesser ? guesserRewards + participationRewards : participationRewards;
+        return guesserRewards + participationRewards;
     }
 
     function withdraw(uint _amount) external inGameState(GameState.Finished) nonReentrant {
