@@ -200,7 +200,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         }
 
         uint userSupply = balanceOf(_msgSender());
-        uint maxSupply = cap() - (totalMinted() - totalSupply());
+        uint maxSupply = cap();
         return userSupply * _perMille / maxSupply;
     }
 
