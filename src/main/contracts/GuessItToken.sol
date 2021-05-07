@@ -45,7 +45,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     GuessItRewards public immutable rewards;
     IPancakeRouter02 public immutable pancakeRouter;    
-    uint public guesserPercentage = 150; //initial rewards percentage for the guesser of the puzzle, in per mille
+    uint public guesserPercentage = 50; //initial rewards percentage for the guesser of the puzzle, in per mille
     uint public transferPercentage = 970; //initial percentage of the amount that is allowed to be transfered, in per mille
     uint public rewardsPercentage = 500; //initial rewards percentage, in per mille
 
@@ -179,8 +179,8 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     }
 
     function setGuesserPercentage(uint _guesserPercentage) external onlyOwner {
-        require(_guesserPercentage >= 100, "GuessItToken: invalid percentage");
-        require(_guesserPercentage <= 200, "GuessItToken: invalid percentage");
+        require(_guesserPercentage >= 10, "GuessItToken: invalid percentage");
+        require(_guesserPercentage <= 100, "GuessItToken: invalid percentage");
         guesserPercentage = _guesserPercentage;
     }
 
