@@ -63,7 +63,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         pancakeRouter = IPancakeRouter02(_pancakeRouter);
         rewards = GuessItRewards(_rewards);
 
-        ERC20._mint(_dev, 1e8 ether); 
+        ERC20._mint(_dev, 1e9 ether); 
         excludeFromFee(address(this));
         excludeFromFee(_rewards);        
 
