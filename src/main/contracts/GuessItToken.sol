@@ -36,15 +36,15 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     }
 
     struct Game {
-        bytes32 puzzle; // the hashed puzzle (image)
+        bytes32 puzzle; // the hashed puzzle
         bytes32[] solutions; // the hashed solutions
-        bool finished;
-        uint finishedBlock;
     }
     
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     GuessItRewards public immutable rewards;
-    IPancakeRouter02 public immutable pancakeRouter;    
+    IPancakeRouter02 public immutable pancakeRouter;   
+    bool public finished = false;
+    uint public finishedBlock = 0; 
     uint public guesserPercentage = 50; //initial rewards percentage for the guesser of the puzzle, in per mille
     uint public transferPercentage = 970; //initial percentage of the amount that is allowed to be transfered, in per mille
     uint public rewardsPercentage = 500; //initial rewards percentage, in per mille
@@ -130,15 +130,15 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         bytes32 hashedSolution = keccak256(abi.encodePacked(_toLower(solution)));
         for(uint i = 0; i < solutions; i++) {
             if(_game.solutions[i] == hashedSolution) {                
-                _game.finished = _guessers[_msgSender()] = true;
-                _game.finishedBlock = block.number;
+                finished = _guessers[_msgSender()] = true;
+                finishedBlock = block.number;
                 _state = GameState.Finished;
                 emit Guessed(_msgSender(), solution, true);                
                 return true;
             } 
         }
         
-        _game.finished = _guessers[_msgSender()] = false;
+        _guessers[_msgSender()] = false;
         emit Guessed(_msgSender(), solution, false);
         return false;
     }
@@ -195,7 +195,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
 
     // Returns for the sender the viewable puzzle share (in permille).
     function getViewablePuzzleShare() external view returns (uint) {
-        if(_game.finished) {
+        if(finished) {
             return _perMille;
         }
 
@@ -205,7 +205,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     }
 
     function _transfer(address _sender, address _recipient, uint _amount) internal override {
-        if(_inSwap || _game.finished || isExcludedFromFee(_sender) || isExcludedFromFee(_recipient)) {
+        if(_inSwap || finished || isExcludedFromFee(_sender) || isExcludedFromFee(_recipient)) {
             super._transfer(_sender, _recipient, _amount);
             return;
         }

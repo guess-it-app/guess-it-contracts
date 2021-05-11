@@ -259,11 +259,11 @@ contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
     }
 
     function _getNativeFinished() private view returns (bool) {
-        return native.getGame().finished;
+        return native.finished();
     }
 
     function _getRewardBlock() private view returns (uint) {        
-        return _getNativeFinished() ? native.getGame().finishedBlock : block.number;
+        return _getNativeFinished() ? native.finishedBlock() : block.number;
     }
 
     function _removeLiquidityAndSwap(address _token, address _to, uint _amount) private returns (bool) {
