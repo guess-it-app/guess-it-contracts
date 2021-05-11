@@ -14,10 +14,10 @@ import "./IWETH.sol";
 contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    event Deposit(address indexed user, uint indexed pid, uint amount);
-    event Withdraw(address indexed user, uint indexed pid, uint amount);
-    event EmergencyWithdraw(address indexed user, uint indexed pid, uint amount);
-    event SwappedForRewards(address _token, uint _amount);
+    event Deposit(address indexed _user, uint indexed _pid, uint _amount);
+    event Withdraw(address indexed _user, uint indexed _pid, uint _amount);
+    event EmergencyWithdraw(address indexed user, uint indexed _pid, uint _amount);
+    event SwappedForRewards(address indexed _token, uint _amount);
 
     struct UserInfo {
         uint amount; // How many tokens the user has provided.

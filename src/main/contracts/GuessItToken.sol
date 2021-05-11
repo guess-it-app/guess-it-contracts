@@ -12,10 +12,10 @@ import "./GuessItRewards.sol";
 contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, ReentrancyGuard {
 
     event GameStarted();
-    event Guessed(address _from, string _solution, bool _guessed);
+    event Guessed(address indexed _from, string indexed _solution, bool indexed _guessed);
     event PriceUpdated(uint _guessPrice);
-    event Withdrawn(address _to, uint _amount);
-    event SwappedForRewards(address _token, uint _amount);
+    event Withdrawn(address indexed _to, uint _amount);
+    event SwappedForRewards(address indexed _token, uint _amount);
 
     enum GameState { Created, Started, Finished }
 
