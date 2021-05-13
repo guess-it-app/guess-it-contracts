@@ -33,8 +33,4 @@ contract GuessItRewards is Ownable, AccessControl {
         require(hasRole(TRANSFER_ROLE, _msgSender()), "GuessItRewards: caller is not able to transfer");
         _to.transfer(_amount);
     }
-
-    function setDev(address _dev) external onlyOwner {
-        dev = _dev;
-    }
 }
