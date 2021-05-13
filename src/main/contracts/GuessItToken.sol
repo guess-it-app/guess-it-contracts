@@ -193,17 +193,6 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         return _totalMinted;
     }
 
-    // Returns for the sender the viewable puzzle share (in permille).
-    function getViewablePuzzleShare() external view returns (uint) {
-        if(finished) {
-            return _perMille;
-        }
-
-        uint userSupply = balanceOf(_msgSender());
-        uint maxSupply = cap();
-        return userSupply * _perMille / maxSupply;
-    }
-
     function _transfer(address _sender, address _recipient, uint _amount) internal override {
         if(_inSwap || finished || isExcludedFromFee(_sender) || isExcludedFromFee(_recipient)) {
             super._transfer(_sender, _recipient, _amount);
