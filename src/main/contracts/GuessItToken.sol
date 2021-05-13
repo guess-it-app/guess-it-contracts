@@ -13,9 +13,12 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
 
     event GameStarted();
     event Guessed(address indexed _from, string indexed _solution, bool indexed _guessed);
-    event PriceUpdated(uint _guessPrice);
+    event PriceUpdated(uint _from, uint _to);
     event Withdrawn(address indexed _to, uint _amount);
     event SwappedForRewards(address indexed _token, uint _amount);
+    event TransferPerMilleChanged(uint _from, uint _to);
+    event RewardsPerMilleChanged(uint _from, uint _to);
+    event GuesserPerMilleChanged(uint _from, uint _to);
 
     enum GameState { Created, Started, Finished }
 
@@ -99,7 +102,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         _state = GameState.Started;
 
         _guessPrice = guessPrice_;
-        emit PriceUpdated(guessPrice_);
+        emit PriceUpdated(0, guessPrice_);
     }
 
     function getGame() external view notInGameState(GameState.Created) returns (Game memory) {
@@ -107,9 +110,9 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     }
 
     function setPrice(uint guessPrice_) external onlyOwner inGameState(GameState.Started) {
-        require(guessPrice_ <= _maxGuessPrice, "GuessItToken: invalid guess price provided");
+        require(guessPrice_ <= _maxGuessPrice, "GuessItToken: invalid guess price provided");        
+        emit PriceUpdated(_guessPrice, guessPrice_);
         _guessPrice = guessPrice_;
-        emit PriceUpdated(guessPrice_);
     }
 
     function getPrice() external view notInGameState(GameState.Created) returns (uint) {
@@ -172,18 +175,21 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     function setTransferPercentage(uint _transferPercentage) external onlyOwner {
         require(_transferPercentage >= 950, "GuessItToken: invalid percentage");
         require(_transferPercentage <= 990, "GuessItToken: invalid percentage");
+        emit TransferPerMilleChanged(transferPercentage, _transferPercentage);
         transferPercentage = _transferPercentage;
     }
 
     function setRewardsPercentage(uint _rewardsPercentage) external onlyOwner {
         require(_rewardsPercentage >= 300, "GuessItToken: invalid percentage");
         require(_rewardsPercentage <= 1000, "GuessItToken: invalid percentage");
+        emit RewardsPerMilleChanged(rewardsPercentage, _rewardsPercentage);
         rewardsPercentage = _rewardsPercentage;
     }
 
     function setGuesserPercentage(uint _guesserPercentage) external onlyOwner {
         require(_guesserPercentage >= 10, "GuessItToken: invalid percentage");
         require(_guesserPercentage <= 100, "GuessItToken: invalid percentage");
+        GuesserPerMilleChanged(guesserPercentage, _guesserPercentage);
         guesserPercentage = _guesserPercentage;
     }
 
