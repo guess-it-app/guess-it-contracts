@@ -54,10 +54,11 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     mapping (address => bool) private _isExcludedFromFee;
     uint private _perMille = 1000; // 100%
     Game private _game;
+    uint private _maxGuessPrice = 10000 ether;
     uint private _guessPrice;
     mapping (address => bool) private _guessers;
     bool private _guesserClaimed;
-    GameState private _state;
+    GameState private _state;    
 
     constructor(address _pancakeRouter, address _dev, address payable _rewards) ERC20Capped(1e11 ether) ERC20("GuessIt Token", "GSSIT") {
         pancakeRouter = IPancakeRouter02(_pancakeRouter);
@@ -86,9 +87,10 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         return _isExcludedFromFee[account];
     }
 
-    function newGame(bytes32 puzzle_, bytes32[] calldata solutions_, uint guessPrice_) external inGameState(GameState.Created) {
+    function newGame(bytes32 puzzle_, bytes32[] calldata solutions_, uint guessPrice_) external inGameState(GameState.Created) {        
         require(puzzle_ != "", "GuessItToken: puzzle should be provided");
         require(solutions_.length > 0, "GuessItToken: solutions should be provided");
+        require(guessPrice_ <= _maxGuessPrice, "GuessItToken: invalid guess price provided");
 
         _game.puzzle = puzzle_;
         _game.solutions = solutions_;        
@@ -105,6 +107,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     }
 
     function setPrice(uint guessPrice_) external onlyOwner inGameState(GameState.Started) {
+        require(guessPrice_ <= _maxGuessPrice, "GuessItToken: invalid guess price provided");
         _guessPrice = guessPrice_;
         emit PriceUpdated(guessPrice_);
     }
