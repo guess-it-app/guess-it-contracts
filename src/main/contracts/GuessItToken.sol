@@ -190,7 +190,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     function setGuesserPercentage(uint _guesserPercentage) external onlyOwner {
         require(_guesserPercentage >= 10, "GuessItToken: invalid percentage");
         require(_guesserPercentage <= 100, "GuessItToken: invalid percentage");
-        GuesserPerMilleChanged(guesserPercentage, _guesserPercentage);
+        emit GuesserPerMilleChanged(guesserPercentage, _guesserPercentage);
         guesserPercentage = _guesserPercentage;
     }
 
