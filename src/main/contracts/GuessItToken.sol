@@ -71,6 +71,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         excludeFromFee(_rewards);        
         excludeFromFee(_dev);
         ERC20._mint(_dev, 1e9 ether); 
+        _totalMinted = 1e9 ether;
 
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
