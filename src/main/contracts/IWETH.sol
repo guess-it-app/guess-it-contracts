@@ -3,4 +3,5 @@ pragma solidity >=0.8.0 <0.9.0;
 
 interface IWETH {
     function transfer(address to, uint value) external returns (bool);
+    function withdraw(uint value) external returns (bool);
 }

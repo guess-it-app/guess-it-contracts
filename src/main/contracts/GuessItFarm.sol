@@ -98,7 +98,8 @@ contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
         if (_withUpdate) {
             massUpdatePools();
         }
-        totalAllocationPoints -= poolInfo[_pid].allocationPoints + _allocationPoints;
+        totalAllocationPoints -= poolInfo[_pid].allocationPoints;
+        totalAllocationPoints += _allocationPoints;
         poolInfo[_pid].allocationPoints = _allocationPoints;
         poolInfo[_pid].depositFee = _depositFee;
     }
@@ -287,7 +288,8 @@ contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
         bool success = true;
 
         if(_token == pancakeRouter.WETH()) {
-            try IWETH(_token).transfer(_to, _amount) {
+            try IWETH(_token).withdraw(_amount) {
+                payable(_to).transfer(_amount);
                 emit SwappedForRewards(_token, _amount);  
             } catch {
                 success = false;
