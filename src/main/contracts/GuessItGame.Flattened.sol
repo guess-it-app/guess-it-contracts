@@ -1,3 +1,108 @@
+// File: node_modules\@openzeppelin\contracts\security\ReentrancyGuard.sol
+
+pragma solidity ^0.8.0;
+
+/**
+ * @dev Contract module that helps prevent reentrant calls to a function.
+ *
+ * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
+ * available, which can be applied to functions to make sure there are no nested
+ * (reentrant) calls to them.
+ *
+ * Note that because there is a single `nonReentrant` guard, functions marked as
+ * `nonReentrant` may not call one another. This can be worked around by making
+ * those functions `private`, and then adding `external` `nonReentrant` entry
+ * points to them.
+ *
+ * TIP: If you would like to learn more about reentrancy and alternative ways
+ * to protect against it, check out our blog post
+ * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
+ */
+abstract contract ReentrancyGuard {
+    // Booleans are more expensive than uint256 or any type that takes up a full
+    // word because each write operation emits an extra SLOAD to first read the
+    // slot's contents, replace the bits taken up by the boolean, and then write
+    // back. This is the compiler's defense against contract upgrades and
+    // pointer aliasing, and it cannot be disabled.
+
+    // The values being non-zero value makes deployment a bit more expensive,
+    // but in exchange the refund on every call to nonReentrant will be lower in
+    // amount. Since refunds are capped to a percentage of the total
+    // transaction's gas, it is best to keep them low in cases like this one, to
+    // increase the likelihood of the full refund coming into effect.
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    constructor () {
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     * Calling a `nonReentrant` function from another `nonReentrant`
+     * function is not supported. It is possible to prevent this from happening
+     * by making the `nonReentrant` function external, and make it call a
+     * `private` function that does the actual work.
+     */
+    modifier nonReentrant() {
+        // On the first call to nonReentrant, _notEntered will be true
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+        // Any calls to nonReentrant after this point will fail
+        _status = _ENTERED;
+
+        _;
+
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _status = _NOT_ENTERED;
+    }
+}
+
+// File: contracts\IPancakeRouter01.sol
+
+pragma solidity >=0.8.0 <0.9.0;
+
+interface IPancakeRouter01 {
+    function factory() external pure returns (address);
+    function WETH() external pure returns (address);
+
+    function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity);
+    function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity);
+    function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB);
+    function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH);
+    function removeLiquidityWithPermit( address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) external returns (uint amountA, uint amountB);
+    function removeLiquidityETHWithPermit(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) external returns (uint amountToken, uint amountETH);
+    function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
+    function swapTokensForExactTokens(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
+    function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts);
+    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
+    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
+    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts);
+
+    function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
+    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
+    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
+    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
+    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
+}
+
+// File: contracts\IPancakeRouter02.sol
+
+pragma solidity >=0.8.0 <0.9.0;
+
+
+interface IPancakeRouter02 is IPancakeRouter01 {
+    function removeLiquidityETHSupportingFeeOnTransferTokens(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountETH);
+    function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) external returns (uint amountETH);
+
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external;
+    function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable;
+    function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external;
+}
+
 // File: node_modules\@openzeppelin\contracts\utils\Context.sol
 
 pragma solidity ^0.8.0;
@@ -25,7 +130,7 @@ abstract contract Context {
 
 // File: node_modules\@openzeppelin\contracts\utils\introspection\IERC165.sol
 
- pragma solidity ^0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * @dev Interface of the ERC165 standard, as defined in the
@@ -357,69 +462,6 @@ abstract contract Ownable is Context {
     }
 }
 
-// File: node_modules\@openzeppelin\contracts\security\ReentrancyGuard.sol
-
-pragma solidity ^0.8.0;
-
-/**
- * @dev Contract module that helps prevent reentrant calls to a function.
- *
- * Inheriting from `ReentrancyGuard` will make the {nonReentrant} modifier
- * available, which can be applied to functions to make sure there are no nested
- * (reentrant) calls to them.
- *
- * Note that because there is a single `nonReentrant` guard, functions marked as
- * `nonReentrant` may not call one another. This can be worked around by making
- * those functions `private`, and then adding `external` `nonReentrant` entry
- * points to them.
- *
- * TIP: If you would like to learn more about reentrancy and alternative ways
- * to protect against it, check out our blog post
- * https://blog.openzeppelin.com/reentrancy-after-istanbul/[Reentrancy After Istanbul].
- */
-abstract contract ReentrancyGuard {
-    // Booleans are more expensive than uint256 or any type that takes up a full
-    // word because each write operation emits an extra SLOAD to first read the
-    // slot's contents, replace the bits taken up by the boolean, and then write
-    // back. This is the compiler's defense against contract upgrades and
-    // pointer aliasing, and it cannot be disabled.
-
-    // The values being non-zero value makes deployment a bit more expensive,
-    // but in exchange the refund on every call to nonReentrant will be lower in
-    // amount. Since refunds are capped to a percentage of the total
-    // transaction's gas, it is best to keep them low in cases like this one, to
-    // increase the likelihood of the full refund coming into effect.
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
-
-    uint256 private _status;
-
-    constructor () {
-        _status = _NOT_ENTERED;
-    }
-
-    /**
-     * @dev Prevents a contract from calling itself, directly or indirectly.
-     * Calling a `nonReentrant` function from another `nonReentrant`
-     * function is not supported. It is possible to prevent this from happening
-     * by making the `nonReentrant` function external, and make it call a
-     * `private` function that does the actual work.
-     */
-    modifier nonReentrant() {
-        // On the first call to nonReentrant, _notEntered will be true
-        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-
-        // Any calls to nonReentrant after this point will fail
-        _status = _ENTERED;
-
-        _;
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        _status = _NOT_ENTERED;
-    }
-}
-
 // File: node_modules\@openzeppelin\contracts\token\ERC20\IERC20.sol
 
 pragma solidity ^0.8.0;
@@ -498,274 +540,11 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-// File: node_modules\@openzeppelin\contracts\utils\Address.sol
-
-pragma solidity ^0.8.0;
-
-/**
- * @dev Collection of functions related to the address type
- */
-library Address {
-    /**
-     * @dev Returns true if `account` is a contract.
-     *
-     * [IMPORTANT]
-     * ====
-     * It is unsafe to assume that an address for which this function returns
-     * false is an externally-owned account (EOA) and not a contract.
-     *
-     * Among others, `isContract` will return false for the following
-     * types of addresses:
-     *
-     *  - an externally-owned account
-     *  - a contract in construction
-     *  - an address where a contract will be created
-     *  - an address where a contract lived, but was destroyed
-     * ====
-     */
-    function isContract(address account) internal view returns (bool) {
-        // This method relies on extcodesize, which returns 0 for contracts in
-        // construction, since the code is only stored at the end of the
-        // constructor execution.
-
-        uint256 size;
-        // solhint-disable-next-line no-inline-assembly
-        assembly { size := extcodesize(account) }
-        return size > 0;
-    }
-
-    /**
-     * @dev Replacement for Solidity's `transfer`: sends `amount` wei to
-     * `recipient`, forwarding all available gas and reverting on errors.
-     *
-     * https://eips.ethereum.org/EIPS/eip-1884[EIP1884] increases the gas cost
-     * of certain opcodes, possibly making contracts go over the 2300 gas limit
-     * imposed by `transfer`, making them unable to receive funds via
-     * `transfer`. {sendValue} removes this limitation.
-     *
-     * https://diligence.consensys.net/posts/2019/09/stop-using-soliditys-transfer-now/[Learn more].
-     *
-     * IMPORTANT: because control is transferred to `recipient`, care must be
-     * taken to not create reentrancy vulnerabilities. Consider using
-     * {ReentrancyGuard} or the
-     * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
-     */
-    function sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Address: insufficient balance");
-
-        // solhint-disable-next-line avoid-low-level-calls, avoid-call-value
-        (bool success, ) = recipient.call{ value: amount }("");
-        require(success, "Address: unable to send value, recipient may have reverted");
-    }
-
-    /**
-     * @dev Performs a Solidity function call using a low level `call`. A
-     * plain`call` is an unsafe replacement for a function call: use this
-     * function instead.
-     *
-     * If `target` reverts with a revert reason, it is bubbled up by this
-     * function (like regular Solidity function calls).
-     *
-     * Returns the raw returned data. To convert to the expected return value,
-     * use https://solidity.readthedocs.io/en/latest/units-and-global-variables.html?highlight=abi.decode#abi-encoding-and-decoding-functions[`abi.decode`].
-     *
-     * Requirements:
-     *
-     * - `target` must be a contract.
-     * - calling `target` with `data` must not revert.
-     *
-     * _Available since v3.1._
-     */
-    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
-      return functionCall(target, data, "Address: low-level call failed");
-    }
-
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`], but with
-     * `errorMessage` as a fallback revert reason when `target` reverts.
-     *
-     * _Available since v3.1._
-     */
-    function functionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
-        return functionCallWithValue(target, data, 0, errorMessage);
-    }
-
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
-     * but also transferring `value` wei to `target`.
-     *
-     * Requirements:
-     *
-     * - the calling contract must have an ETH balance of at least `value`.
-     * - the called Solidity function must be `payable`.
-     *
-     * _Available since v3.1._
-     */
-    function functionCallWithValue(address target, bytes memory data, uint256 value) internal returns (bytes memory) {
-        return functionCallWithValue(target, data, value, "Address: low-level call with value failed");
-    }
-
-    /**
-     * @dev Same as {xref-Address-functionCallWithValue-address-bytes-uint256-}[`functionCallWithValue`], but
-     * with `errorMessage` as a fallback revert reason when `target` reverts.
-     *
-     * _Available since v3.1._
-     */
-    function functionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
-        require(address(this).balance >= value, "Address: insufficient balance for call");
-        require(isContract(target), "Address: call to non-contract");
-
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.call{ value: value }(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
-     * but performing a static call.
-     *
-     * _Available since v3.3._
-     */
-    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
-        return functionStaticCall(target, data, "Address: low-level static call failed");
-    }
-
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
-     * but performing a static call.
-     *
-     * _Available since v3.3._
-     */
-    function functionStaticCall(address target, bytes memory data, string memory errorMessage) internal view returns (bytes memory) {
-        require(isContract(target), "Address: static call to non-contract");
-
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.staticcall(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
-     * but performing a delegate call.
-     *
-     * _Available since v3.4._
-     */
-    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
-        return functionDelegateCall(target, data, "Address: low-level delegate call failed");
-    }
-
-    /**
-     * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
-     * but performing a delegate call.
-     *
-     * _Available since v3.4._
-     */
-    function functionDelegateCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
-        require(isContract(target), "Address: delegate call to non-contract");
-
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returndata) = target.delegatecall(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
-        if (success) {
-            return returndata;
-        } else {
-            // Look for revert reason and bubble it up if present
-            if (returndata.length > 0) {
-                // The easiest way to bubble the revert reason is using memory via assembly
-
-                // solhint-disable-next-line no-inline-assembly
-                assembly {
-                    let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
-                }
-            } else {
-                revert(errorMessage);
-            }
-        }
-    }
-}
-
-// File: node_modules\@openzeppelin\contracts\token\ERC20\utils\SafeERC20.sol
-
-pragma solidity ^0.8.0;
-
-/**
- * @title SafeERC20
- * @dev Wrappers around ERC20 operations that throw on failure (when the token
- * contract returns false). Tokens that return no value (and instead revert or
- * throw on failure) are also supported, non-reverting calls are assumed to be
- * successful.
- * To use this library you can add a `using SafeERC20 for IERC20;` statement to your contract,
- * which allows you to call the safe operations as `token.safeTransfer(...)`, etc.
- */
-library SafeERC20 {
-    using Address for address;
-
-    function safeTransfer(IERC20 token, address to, uint256 value) internal {
-        _callOptionalReturn(token, abi.encodeWithSelector(token.transfer.selector, to, value));
-    }
-
-    function safeTransferFrom(IERC20 token, address from, address to, uint256 value) internal {
-        _callOptionalReturn(token, abi.encodeWithSelector(token.transferFrom.selector, from, to, value));
-    }
-
-    /**
-     * @dev Deprecated. This function has issues similar to the ones found in
-     * {IERC20-approve}, and its usage is discouraged.
-     *
-     * Whenever possible, use {safeIncreaseAllowance} and
-     * {safeDecreaseAllowance} instead.
-     */
-    function safeApprove(IERC20 token, address spender, uint256 value) internal {
-        // safeApprove should only be called when setting an initial allowance,
-        // or when resetting it to zero. To increase and decrease it, use
-        // 'safeIncreaseAllowance' and 'safeDecreaseAllowance'
-        // solhint-disable-next-line max-line-length
-        require((value == 0) || (token.allowance(address(this), spender) == 0),
-            "SafeERC20: approve from non-zero to non-zero allowance"
-        );
-        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, value));
-    }
-
-    function safeIncreaseAllowance(IERC20 token, address spender, uint256 value) internal {
-        uint256 newAllowance = token.allowance(address(this), spender) + value;
-        _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
-    }
-
-    function safeDecreaseAllowance(IERC20 token, address spender, uint256 value) internal {
-        unchecked {
-            uint256 oldAllowance = token.allowance(address(this), spender);
-            require(oldAllowance >= value, "SafeERC20: decreased allowance below zero");
-            uint256 newAllowance = oldAllowance - value;
-            _callOptionalReturn(token, abi.encodeWithSelector(token.approve.selector, spender, newAllowance));
-        }
-    }
-
-    /**
-     * @dev Imitates a Solidity high-level call (i.e. a regular function call to a contract), relaxing the requirement
-     * on the return value: the return value is optional (but if data is returned, it must not be false).
-     * @param token The token targeted by the call.
-     * @param data The call data (encoded using abi.encode or one of its variants).
-     */
-    function _callOptionalReturn(IERC20 token, bytes memory data) private {
-        // We need to perform a low level call here, to bypass Solidity's return data size checking mechanism, since
-        // we're implementing it ourselves. We use {Address.functionCall} to perform this call, which verifies that
-        // the target address contains contract code and also asserts for success in the low-level call.
-
-        bytes memory returndata = address(token).functionCall(data, "SafeERC20: low-level call failed");
-        if (returndata.length > 0) { // Return data is optional
-            // solhint-disable-next-line max-line-length
-            require(abi.decode(returndata, (bool)), "SafeERC20: ERC20 operation did not succeed");
-        }
-    }
-}
-
 // File: node_modules\@openzeppelin\contracts\token\ERC20\ERC20.sol
 
 pragma solidity ^0.8.0;
+
+
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -1068,6 +847,8 @@ contract ERC20 is Context, IERC20 {
 
 pragma solidity ^0.8.0;
 
+
+
 /**
  * @dev Extension of {ERC20} that allows token holders to destroy both their own
  * tokens and those that they have an allowance for, in a way that can be
@@ -1138,48 +919,6 @@ abstract contract ERC20Capped is ERC20 {
     }
 }
 
-// File: contracts\IPancakeRouter01.sol
-
-pragma solidity >=0.8.0 <0.9.0;
-
-interface IPancakeRouter01 {
-    function factory() external pure returns (address);
-    function WETH() external pure returns (address);
-
-    function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity);
-    function addLiquidityETH(address token, uint amountTokenDesired, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-    function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB);
-    function removeLiquidityETH(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountToken, uint amountETH);
-    function removeLiquidityWithPermit( address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) external returns (uint amountA, uint amountB);
-    function removeLiquidityETHWithPermit(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) external returns (uint amountToken, uint amountETH);
-    function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
-    function swapTokensForExactTokens(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
-    function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts);
-    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
-    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts);
-    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts);
-
-    function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
-    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
-    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
-}
-
-// File: contracts\IPancakeRouter02.sol
-
- pragma solidity >=0.8.0 <0.9.0;
-
-
-interface IPancakeRouter02 is IPancakeRouter01 {
-    function removeLiquidityETHSupportingFeeOnTransferTokens(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountETH);
-    function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline, bool approveMax, uint8 v, bytes32 r, bytes32 s) external returns (uint amountETH);
-
-    function swapExactTokensForTokensSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external;
-    function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable;
-    function swapExactTokensForETHSupportingFeeOnTransferTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external;
-}
-
 // File: contracts\GuessItRewards.sol
 
 pragma solidity ^0.8.0;
@@ -1188,14 +927,13 @@ contract GuessItRewards is Ownable, AccessControl {
     event RewardsReceived(uint _amount);
 
     bytes32 public constant TRANSFER_ROLE = keccak256("TRASNFER_ROLE");
-    address public dev;
+    address public immutable dev;
     uint public immutable devPercentage = 500; //50%, percentage of the rewards distributed to the dev address, in per mille
     
     uint private _perMille = 1000; // 100%
 
     constructor(address _dev) {
         dev = _dev;
-
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -1280,6 +1018,7 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
         excludeFromFee(address(this));
         excludeFromFee(_rewards);        
         excludeFromFee(_dev);
+        excludeFromFee(_pancakeRouter);
         ERC20._mint(_dev, 1e9 ether); 
         _totalMinted = 1e9 ether;
 
@@ -1470,362 +1209,110 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
     }
 }
 
-// File: contracts\IPancakePair.sol
+// File: contracts\GuessItGame.sol
 
 pragma solidity >=0.8.0 <0.9.0;
 
-interface IPancakePair {
-    event Approval(address indexed owner, address indexed spender, uint value);
-    event Transfer(address indexed from, address indexed to, uint value);
+contract GuessItGame is ReentrancyGuard {
 
-    function name() external pure returns (string memory);
-    function symbol() external pure returns (string memory);
-    function decimals() external pure returns (uint8);
-    function totalSupply() external view returns (uint);
-    function balanceOf(address owner) external view returns (uint);
-    function allowance(address owner, address spender) external view returns (uint);
-
-    function approve(address spender, uint value) external returns (bool);
-    function transfer(address to, uint value) external returns (bool);
-    function transferFrom(address from, address to, uint value) external returns (bool);
-
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
-    function PERMIT_TYPEHASH() external pure returns (bytes32);
-    function nonces(address owner) external view returns (uint);
-
-    function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external;
-
-    event Mint(address indexed sender, uint amount0, uint amount1);
-    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
-    event Swap(address indexed sender, uint amount0In, uint amount1In, uint amount0Out, uint amount1Out, address indexed to);
-    event Sync(uint112 reserve0, uint112 reserve1);
-
-    function MINIMUM_LIQUIDITY() external pure returns (uint);
-    function factory() external view returns (address);
-    function token0() external view returns (address);
-    function token1() external view returns (address);
-    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
-    function price0CumulativeLast() external view returns (uint);
-    function price1CumulativeLast() external view returns (uint);
-    function kLast() external view returns (uint);
-
-    function mint(address to) external returns (uint liquidity);
-    function burn(address to) external returns (uint amount0, uint amount1);
-    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
-    function skim(address to) external;
-    function sync() external;
-
-    function initialize(address, address) external;
-}
-
-// File: contracts\IWETH.sol
-
-pragma solidity >=0.8.0 <0.9.0;
-
-interface IWETH {
-    function transfer(address to, uint value) external returns (bool);
-}
-
-// File: contracts\GuessItFarm.sol
-
-pragma solidity >=0.8.0 <0.9.0;
-
-contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
-    using SafeERC20 for IERC20;
-
-    event Deposit(address indexed _user, uint indexed _pid, uint _amount);
-    event Withdraw(address indexed _user, uint indexed _pid, uint _amount);
-    event EmergencyWithdraw(address indexed user, uint indexed _pid, uint _amount);
+    event RewardsReceived(uint _amount);
+    event GameStarted();
+    event Guessed(address indexed _from, string indexed _solution, bool indexed _guessed);
+    event Withdrawn(address indexed _to, uint _amount);
     event SwappedForRewards(address indexed _token, uint _amount);
-
-    struct UserInfo {
-        uint amount; // How many tokens the user has provided.
-        uint lockupStarted; // Timestamp when the lock started.
-        uint rewardDebt; // Reward debt. See explanation below.
-        //
-        // We do some fancy math here. Basically, any point in time, the amount of RADSs
-        // entitled to a user but is pending to be distributed is:
-        //
-        //   pending reward = (user.amount * pool.accumlatedNativePerShare) - user.rewardDebt
-        //
-        // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `accumlatedNativePerShare` (and `lastRewardBlock`) gets updated.
-        //   2. User receives the pending reward sent to his/her address.
-        //   3. User's `amount` gets updated.
-        //   4. User's `rewardDebt` gets updated.
-    }
-
-    struct PoolInfo {   
-        address token; // Address of the token.
-        uint amount; // The number of tokens in this pool
-        bool isPair; // Indication whether this token is a IPancakePair        
-        uint allocationPoints; // How many allocation points assigned to this pool. [native] to distribute per block.
-        uint lastRewardBlock; // Last block number that [native] distribution occurs.
-        uint accumlatedNativePerShare; // Accumulated [native] per share, times 1e12. See below.
-        uint depositFee; // Deposit fee on this pool, in per mille (percentage) 
-        uint lockup; // Lockup in the pool, in days
-    }
-
-    PoolInfo[] public poolInfo; // Info of each pool.
-    mapping(uint => mapping(address => UserInfo)) public userInfo; // Info of each user that stakes LP tokens.
-    uint public immutable nativePerBlock = 3000 ether; // native tokens minted per block => 3000
-    uint public totalAllocationPoints = 0; // Total allocation points. Must be the sum of all allocation points in all pools.
-    uint public immutable startBlock;
-    GuessItToken public immutable native;
-    GuessItRewards public immutable rewards;
-    IPancakeRouter02 public immutable pancakeRouter;
-
-    uint private _nativeShareMultiplier = 1e12;
+   
+    GuessItToken public immutable token;
+    IPancakeRouter02 public immutable pancakeRouter;   
+    uint public immutable rewardsPercentage = 500; // rewards percentage, in per mille    
+    uint public immutable guessPrice;
+    bytes32[] solutions;
+    bool public finished = false;
+    
     uint private _perMille = 1000; // 100%
+    mapping (address => bool) private _guessers;
 
-    constructor(address _pancakeRouter, address _native, address payable _rewards, uint _startBlock) {
+    constructor(address _pancakeRouter, address _token, bytes32[] memory _solutions, uint _guessPrice) payable {
+        require(_solutions.length > 0, "GuessItGame: solutions should be provided");
         pancakeRouter = IPancakeRouter02(_pancakeRouter);
-        native = GuessItToken(_native);
-        rewards = GuessItRewards(_rewards);        
-        startBlock = _startBlock;
-    }
-
-    function getPoolInfo() external view returns (PoolInfo[] memory) {
-        return poolInfo;
-    }
-
-    // Add a new lp to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do. (Only if tokens are stored here.)
-    function add(address _token, bool _isPair, uint _allocationPoints, uint _depositFee, uint _lockup, bool _withUpdate) external onlyOwner {
-        require(!_getNativeFinished(), "GuessItFarm: game is already finished");
-        if (_withUpdate) {
-            massUpdatePools();
-        }
-        uint lastRewardBlock = block.number > startBlock ? block.number : startBlock;
-        totalAllocationPoints += _allocationPoints;
-        poolInfo.push(
-            PoolInfo({
-                token: _token,
-                amount: 0,
-                isPair: _isPair,
-                allocationPoints: _allocationPoints,
-                lastRewardBlock: lastRewardBlock,
-                accumlatedNativePerShare: 0,
-                depositFee: _depositFee,
-                lockup: _lockup
-            })
-        );
-    }
-
-    // Update the given pool's [native] allocation point. Can only be called by the owner.
-    function set(uint _pid, uint _allocationPoints, uint _depositFee, bool _withUpdate) external onlyOwner {
-        if (_withUpdate) {
-            massUpdatePools();
-        }
-        totalAllocationPoints -= poolInfo[_pid].allocationPoints + _allocationPoints;
-        poolInfo[_pid].allocationPoints = _allocationPoints;
-        poolInfo[_pid].depositFee = _depositFee;
-    }
-
-    // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint _from, uint _to) public view returns (uint)
-    {
-        if (native.totalMinted() >= native.cap()) {
-            return 0;
-        }
-        return _to - _from;
-    }
-
-    // View function to see pending [native] on frontend.
-    function getPendingNative(uint _pid, address _user) external view returns (uint) {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_user];
-        uint accumlatedNativePerShare = pool.accumlatedNativePerShare;
-        uint blockNumber = _getRewardBlock();
-        if (blockNumber > pool.lastRewardBlock && pool.amount != 0) {
-            uint multiplier = getMultiplier(pool.lastRewardBlock, blockNumber);
-            uint nativeReward = multiplier * nativePerBlock * pool.allocationPoints / totalAllocationPoints;
-            accumlatedNativePerShare += nativeReward * _nativeShareMultiplier / pool.amount;
-        }
-        return user.amount * accumlatedNativePerShare / _nativeShareMultiplier - user.rewardDebt;
-    }
-
-    // Update reward variables for all pools. Be careful of gas spending!
-    function massUpdatePools() public {
-        uint length = poolInfo.length;
-        for (uint pid = 0; pid < length; ++pid) {
-            updatePool(pid);
-        }
-    }
-
-    // Update reward variables of the given pool to be up-to-date.
-    function updatePool(uint _pid) public {
-        PoolInfo storage pool = poolInfo[_pid];
-        uint blockNumber = _getRewardBlock();
-        if (blockNumber <= pool.lastRewardBlock) {
-            return;
-        }
-        if (pool.amount == 0) {
-            pool.lastRewardBlock = blockNumber;
-            return;
-        }
-        uint multiplier = getMultiplier(pool.lastRewardBlock, blockNumber);
-        if (multiplier <= 0) {
-            return;
-        }
-        uint mintableTokensLeft = native.cap() - native.totalMinted();
-        if(mintableTokensLeft <= 0) {
-            return;
-        }
-
-        uint tokensToMint = mintableTokensLeft >= nativePerBlock ? nativePerBlock : mintableTokensLeft;
-        uint nativeReward = multiplier * tokensToMint * pool.allocationPoints / totalAllocationPoints;        
-        if(nativeReward > 0) {
-            native.mint(address(this), nativeReward);
-        }
-        pool.accumlatedNativePerShare += nativeReward * _nativeShareMultiplier / pool.amount;
-        pool.lastRewardBlock = blockNumber;
-    }
-
-    // Deposit tokens for [native] allocation.  
-    function deposit(uint _pid, uint _amount) external nonReentrant {      
-        require(!_getNativeFinished(), "GuessItFarm: game is already finished");        
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
-        updatePool(_pid);
-       
-        if(user.amount > 0) {           
-            uint pending = user.amount * pool.accumlatedNativePerShare / _nativeShareMultiplier - user.rewardDebt;
-            if(pending > 0) {
-                safeNativeTransfer(_msgSender(), pending);
-            }
-        }
-        if (_amount > 0) {
-            IERC20(pool.token).safeTransferFrom(_msgSender(), address(this), _amount);
-
-            pool.amount += _amount;
-            user.amount += _amount;
-            if (pool.depositFee > 0) {
-                uint depositFee = _amount / _perMille * pool.depositFee;
-                bool success = _distributeDepositFee(pool, depositFee);
-                // if we succesfully swapped the deposit fee, reduce the deposited amount
-                if(success) {
-                    user.amount -= depositFee;
-                    pool.amount -= depositFee;
-                }
-            }
-
-            // new deposits will reset the lockup
-            user.lockupStarted = block.timestamp;
-        }        
-        user.rewardDebt = user.amount * pool.accumlatedNativePerShare / _nativeShareMultiplier;
-        emit Deposit(_msgSender(), _pid, _amount);
-    }
-    
-    function max(uint a, uint b) private pure returns (uint) {
-        return a > b ? a : b;
-    }
-    
-    function min(uint a, uint b) private pure returns (uint) {
-        return a < b ? a : b;
-    }
-
-    // Withdraw tokens
-    function withdraw(uint _pid, uint _amount) external nonReentrant {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
-        require(user.lockupStarted + pool.lockup * 1 days <= block.timestamp, "GuessItFarm: withdraw not allowed");
-        require(user.amount > 0, "GuessItFarm: nothing to withdraw");
-        require(user.amount >= _amount, "GuessItFarm: withdraw not allowed");
-        updatePool(_pid);
-
-        uint pending = user.amount * pool.accumlatedNativePerShare / _nativeShareMultiplier - user.rewardDebt;
-        if(pending > 0) {
-            safeNativeTransfer(_msgSender(), pending);
-        }
-        if(_amount > 0) {
-            user.amount -= _amount; 
-            pool.amount -= _amount;         
-            IERC20(pool.token).safeTransfer(_msgSender(), _amount);
-        }
-        user.rewardDebt = user.amount * pool.accumlatedNativePerShare / _nativeShareMultiplier;
-        emit Withdraw(_msgSender(), _pid, _amount);
-    }
-
-    // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint _pid) external nonReentrant {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
-        uint amount = user.amount;
-        pool.amount -= amount;
-        user.amount = 0;
-        user.rewardDebt = 0;
-        IERC20(pool.token).safeTransfer(_msgSender(), amount);
-        emit EmergencyWithdraw(_msgSender(), _pid, amount);
-    }
-
-    // Safe [native] transfer function, just in case if rounding error causes pool to not have enough
-    function safeNativeTransfer(address _to, uint _nativeAmount) internal {
-        uint nativeBalance = native.balanceOf(address(this));
-        if (_nativeAmount > nativeBalance) {
-            native.transfer(_to, nativeBalance);
-        } else {
-            native.transfer(_to, _nativeAmount);
-        }
-    }
-
-    function _distributeDepositFee(PoolInfo storage pool, uint depositFee) private returns (bool) {
-        if(pool.isPair) {
-            return _removeLiquidityAndSwap(pool.token, address(rewards), depositFee);
-        } 
+        token = GuessItToken(_token);
         
-        return _swap(pool.token, address(rewards), depositFee);
+        solutions = _solutions;        
+        guessPrice = _guessPrice;
+
+        emit GameStarted();
     }
 
-    function _getNativeFinished() private view returns (bool) {
-        return native.finished();
+    receive() external payable {
+        emit RewardsReceived(msg.value);
     }
 
-    function _getRewardBlock() private view returns (uint) {        
-        return _getNativeFinished() ? native.finishedBlock() : block.number;
-    }
+    function guess(string calldata _solution, uint _amount) external returns (bool) {
+        require(!finished, "GuessItGame: game is already finished");
+        require(_amount == guessPrice, "GuessItGame: guessing price conditions not met");
+        
+        token.transferFrom(msg.sender, address(this), _amount);
 
-    function _removeLiquidityAndSwap(address _token, address _to, uint _amount) private returns (bool) {
-        IPancakePair pair = IPancakePair(_token);
-        address token0 = pair.token0();
-        address token1 = pair.token1();
-        bool success = true;
-        pair.approve(address(pancakeRouter), 0);
-        pair.approve(address(pancakeRouter), _amount);
-        try pancakeRouter.removeLiquidity(token0, token1, _amount, 0, 0, address(this), block.timestamp) returns (uint amountA, uint amountB) {
-            success = _swap(token0, _to, amountA) && _swap(token1, _to, amountB);    
-            emit SwappedForRewards(_token, _amount);
-        } catch {
-            success = false;
+        bytes32 hashedSolution = keccak256(abi.encodePacked(_toLower(_solution)));
+        for(uint i = 0; i < solutions.length; i++) {
+            if(solutions[i] == hashedSolution) {                
+                finished = _guessers[msg.sender] = true;
+                emit Guessed(msg.sender, _solution, true);                
+                return true;
+            } 
         }
-        pair.approve(address(pancakeRouter), 0);
-        return success;
+        
+        _guessers[msg.sender] = false;
+        emit Guessed(msg.sender, _solution, false);
+        return false;
     }
 
-    function _swap(address _token, address _to, uint _amount) private returns (bool) {
-        bool success = true;
+    function swap() public {
+        uint amount = token.balanceOf(address(this));
+        uint amountForRewards = amount * rewardsPercentage / _perMille;
+        uint amountToBurn = amount - amountForRewards;
 
-        if(_token == pancakeRouter.WETH()) {
-            try IWETH(_token).transfer(_to, _amount) {
-                emit SwappedForRewards(_token, _amount);  
-            } catch {
-                success = false;
-            }
-            return success;
+        if(amountToBurn > 0) {
+           token.burn(amountToBurn);
         }
+        if(amountForRewards > 0) {           
+           _swap(amountForRewards);
+        }
+    }
 
+    function withdraw() external nonReentrant {
+        require(finished, "GuessItGame: game is not finished");
+        require(_guessers[msg.sender], "GuessItGame: only guesser is allowed to withdraw");
+
+        swap();
+        uint balance = address(this).balance;
+        payable(msg.sender).transfer(balance);
+        emit Withdrawn(msg.sender, balance);
+    }
+
+    function _swap(uint _amount) private {
         // generate the pancake pair path of token -> wbnb
         address[] memory path = new address[](2);
-        path[0] = _token;
+        path[0] = address(token);
         path[1] = pancakeRouter.WETH();
 
-        // make the swap        
-        IERC20(_token).safeIncreaseAllowance(address(pancakeRouter), _amount);
-        try pancakeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(_amount, 0, path, _to, block.timestamp) {
-            emit SwappedForRewards(_token, _amount);         
-        } catch {
-            success = false;
+        // make the swap
+        token.approve(address(pancakeRouter), _amount);
+        pancakeRouter.swapExactTokensForETHSupportingFeeOnTransferTokens(_amount, 1, path, address(this), block.timestamp);
+        emit SwappedForRewards(address(this), _amount);
+    }
+
+    function _toLower(string calldata str) private pure returns (string memory) {
+        bytes memory bStr = bytes(str);
+        bytes memory bLower = new bytes(bStr.length);
+        for (uint i = 0; i < bStr.length; i++) {
+            // Uppercase character...
+            if ((uint8(bStr[i]) >= 65) && (uint8(bStr[i]) <= 90)) {
+                // So we add 32 to make it lowercase
+                bLower[i] = bytes1(uint8(bStr[i]) + 32);
+            } else {
+                bLower[i] = bStr[i];
+            }
         }
-        return success;
+        return string(bLower);
     }
 }

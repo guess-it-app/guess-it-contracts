@@ -1,7 +1,5 @@
 // File: node_modules\@openzeppelin\contracts\utils\Context.sol
 
-// SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 /*
@@ -27,8 +25,6 @@ abstract contract Context {
 
 // File: node_modules\@openzeppelin\contracts\utils\introspection\IERC165.sol
 
-// SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 /**
@@ -53,8 +49,6 @@ interface IERC165 {
 }
 
 // File: node_modules\@openzeppelin\contracts\utils\introspection\ERC165.sol
-
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -83,8 +77,6 @@ abstract contract ERC165 is IERC165 {
 }
 
 // File: node_modules\@openzeppelin\contracts\access\AccessControl.sol
-
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -298,8 +290,6 @@ abstract contract AccessControl is Context, IAccessControl, ERC165 {
 }
 
 // File: node_modules\@openzeppelin\contracts\governance\TimelockController.sol
-
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -597,8 +587,6 @@ contract TimelockController is AccessControl {
 
 // File: node_modules\@openzeppelin\contracts\access\Ownable.sol
 
-// SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 /**
@@ -667,8 +655,9 @@ abstract contract Ownable is Context {
 
 // File: contracts\GuessItRewards.sol
 
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.0;
+
+
 
 contract GuessItRewards is Ownable, AccessControl {
     event RewardsReceived(uint _amount);
@@ -702,8 +691,6 @@ contract GuessItRewards is Ownable, AccessControl {
 }
 
 // File: node_modules\@openzeppelin\contracts\security\ReentrancyGuard.sol
-
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -767,8 +754,6 @@ abstract contract ReentrancyGuard {
 }
 
 // File: node_modules\@openzeppelin\contracts\token\ERC20\IERC20.sol
-
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -847,8 +832,6 @@ interface IERC20 {
 }
 
 // File: node_modules\@openzeppelin\contracts\token\ERC20\ERC20.sol
-
-// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 
@@ -1153,8 +1136,6 @@ contract ERC20 is Context, IERC20 {
 
 // File: node_modules\@openzeppelin\contracts\token\ERC20\extensions\ERC20Burnable.sol
 
-// SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 
@@ -1195,8 +1176,6 @@ abstract contract ERC20Burnable is Context, ERC20 {
 
 // File: node_modules\@openzeppelin\contracts\token\ERC20\extensions\ERC20Capped.sol
 
-// SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 
@@ -1233,7 +1212,6 @@ abstract contract ERC20Capped is ERC20 {
 
 // File: contracts\IPancakeRouter01.sol
 
-// SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0 <0.9.0;
 
 interface IPancakeRouter01 {
@@ -1262,8 +1240,8 @@ interface IPancakeRouter01 {
 
 // File: contracts\IPancakeRouter02.sol
 
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity >=0.8.0 <0.9.0;
+
 
 interface IPancakeRouter02 is IPancakeRouter01 {
     function removeLiquidityETHSupportingFeeOnTransferTokens(address token, uint liquidity, uint amountTokenMin, uint amountETHMin, address to, uint deadline) external returns (uint amountETH);
@@ -1276,8 +1254,7 @@ interface IPancakeRouter02 is IPancakeRouter01 {
 
 // File: contracts\GuessItToken.sol
 
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity >=0.8.0 <0.9.0;
 
 contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, ReentrancyGuard {
 
@@ -1532,8 +1509,6 @@ contract GuessItToken is ERC20Burnable, ERC20Capped, AccessControl, Ownable, Ree
 
 // File: node_modules\@openzeppelin\contracts\utils\Address.sol
 
-// SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 
 /**
@@ -1724,11 +1699,7 @@ library Address {
 
 // File: node_modules\@openzeppelin\contracts\token\ERC20\utils\SafeERC20.sol
 
-// SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
-
-
 
 /**
  * @title SafeERC20
@@ -1803,8 +1774,7 @@ library SafeERC20 {
 
 // File: contracts\IPancakePair.sol
 
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.0 <0.9.0;
+ pragma solidity >=0.8.0 <0.9.0;
 
 interface IPancakePair {
     event Approval(address indexed owner, address indexed spender, uint value);
@@ -1852,7 +1822,6 @@ interface IPancakePair {
 
 // File: contracts\IWETH.sol
 
-// SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0 <0.9.0;
 
 interface IWETH {
@@ -1861,8 +1830,7 @@ interface IWETH {
 
 // File: contracts\GuessItFarm.sol
 
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity >=0.8.0 <0.9.0;
 
 contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -2166,8 +2134,7 @@ contract GuessItFarm is Ownable, AccessControl, ReentrancyGuard {
 
 // File: contracts\GuessItController.sol
 
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.0;
 
 contract GuessItController is TimelockController {
     GuessItToken immutable public native;
